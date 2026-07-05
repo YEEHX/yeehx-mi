@@ -1,0 +1,49 @@
+{
+  "slogan": "极尽创意 MAX CREATIVITY",
+  "tagline": "拍过的，都能轻松找到。",
+  "tagline_candidates": [
+    "拍过的，都找得回。",
+    "让素材听得懂人话。",
+    "找不回来的素材，等于没拍过。",
+    "你的素材库，是 AI 时代最值钱的家底。",
+    "十年素材，一句话调出。",
+    "你的镜头，从此有记忆。",
+    "硬盘里的每一帧，都在等一句话。"
+  ],
+  "author": "玩椰 · AI导演 / AI创作者 · 武汉",
+  "site": "https://www.yeehx.com",
+  "email": "hi@yeehx.com",
+  "copy_id": "玩椰",
+  "links": [
+    {
+      "name": "抖音",
+      "url": "https://v.douyin.com/vcq9jo-kBZ0"
+    },
+    {
+      "name": "B站",
+      "url": "https://space.bilibili.com/371127301"
+    },
+    {
+      "name": "小红书",
+      "url": "https://www.xiaohongshu.com/user/profile/5c2cfc150000000005027f1d"
+    },
+    {
+      "name": "微博",
+      "url": "https://weibo.com/u/7854994467"
+    },
+    {
+      "name": "视频号",
+      "url": "",
+      "copy": "微信视频号搜「玩椰」"
+    },
+    {
+      "name": "官网",
+      "url": "https://www.yeehx.com"
+    }
+  ],
+  "donation": {
+    "enabled": false,
+    "text": "觅影是玩椰用爱发电的个人工具。想支持，去任一平台点个关注就是最好的赞助。",
+    "qr": ""
+  }
+}

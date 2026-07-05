@@ -1,0 +1,19 @@
+# 觅影 依赖。双击「启动觅影.command」会自动 pip 装好，你不用管。
+# (手动装: pip3 install -r requirements.txt)
+fastapi>=0.110
+uvicorn>=0.27
+pillow>=10.0
+numpy>=1.24
+opencv-python-headless>=4.8   # 无界面版，免装系统图形库
+pyyaml>=6.0
+requests>=2.31
+imageio-ffmpeg>=0.4.9         # 自带 ffmpeg 二进制 → 不用单独 brew install ffmpeg
+rawpy>=0.19                   # RAW 解码（装不上会自动退回用 exiftool 提预览）
+blake3>=0.4                   # 内容指纹（缺了自动用 sha256 兜底）
+# pywebview：桌面窗口壳（mac 系统 WKWebView）。启动脚本单独 best-effort 安装，
+# 装不上自动回落浏览器模式——绝不因为一个窗口壳卡住整个启动。
+# pillow-heif：HEIC/iPhone 照片解码。启动脚本会单独 best-effort 安装，
+# 不写进必装清单（个别 Python 版本暂无 wheel 时不至于卡住整个启动）。
+# 发布/复现环境用固定版本：pip install -r requirements.lock.txt
+fastmcp==3.4.2              # MCP server（Hermes 等外部 Agent 接入）。钉死版本：
+                            # >=2 会让 pip 解析器在几十个版本间回溯，国内网络容易装炸

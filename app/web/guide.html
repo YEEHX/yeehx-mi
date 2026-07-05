@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>觅影使用说明 · 玩椰 YEEHX</title>
+<style>
+:root{--bg:#101014;--panel:#17171c;--line:#26262e;--text:#e8e8ec;--muted:#9a9aa6;--gold:#d4a843;--red:#c0392b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.75 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:26px;margin:6px 0 2px}
+h2{font-size:19px;margin:44px 0 10px;padding-top:18px;border-top:1px solid var(--line)}
+h2 small{color:var(--muted);font-weight:400;font-size:13px;margin-left:8px}
+p,li{color:var(--text)}
+.muted{color:var(--muted)}
+.gold{color:var(--gold)}
+img{max-width:100%;border-radius:10px;border:1px solid var(--line);margin:10px 0;display:block}
+img.inline{display:inline-block;vertical-align:middle;margin:0 4px;height:34px;width:auto;border-radius:7px}
+.tip{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:8px;padding:10px 14px;margin:12px 0;font-size:14px}
+.warn{border-left-color:var(--red)}
+code,kbd{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 7px;font-size:13px}
+.toc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:18px 0;font-size:14px}
+.toc a{color:var(--gold);text-decoration:none;margin-right:14px;white-space:nowrap;line-height:2}
+a{color:var(--gold)}
+.footer{margin-top:56px;padding:22px;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.footer .btn{display:inline-block;margin:6px 6px 0;padding:7px 16px;border:1px solid var(--line);border-radius:8px;color:var(--text);text-decoration:none;font-size:14px}
+.footer .btn:hover{border-color:var(--gold);color:var(--gold)}
+blockquote{margin:10px 0;padding:8px 14px;border-left:3px solid var(--line);color:var(--muted);background:var(--panel);border-radius:0 8px 8px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div style="display:flex;align-items:center;gap:12px"><a href="/" style="text-decoration:none;font-size:13px">← 返回觅影</a><span class="muted" style="font-size:13px">觅影 MiYing · 图文使用说明</span></div>
+<h1>拍过的，都能轻松找到。</h1>
+<p class="muted">这份说明带你从第一次打开到熟练使用，每一步都有图。随时可从顶栏 <b>?</b> 或「关于觅影」再次打开。</p>
+
+<div class="toc" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;font-size:14px;line-height:1.7">
+<div style="grid-column:1/-1" class="muted">它能干什么 · 30 秒版</div>
+<div><b class="gold">找</b>　十几 TB 素材一句话调出——地标、颜色、天气、氛围都能搜</div>
+<div><b class="gold">看</b>　每段素材一张代表帧，零延迟速览整块硬盘</div>
+<div><b class="gold">用</b>　批量导出原片 / 单帧底图 / 清单，不用开剪辑软件</div>
+<div><b class="gold">接</b>　AI 助手可直接指挥觅影找素材、发原片（MCP）</div>
+</div>
+
+<img src="guide/demo.gif" alt="搜索 → 选中 → 导出 演示">
+
+<div class="toc">
+<a href="#s1">① 安装启动</a><a href="#s2">② 快扫建库</a><a href="#s3">③ 界面地图</a><a href="#s4">④ 找素材</a><a href="#s5">⑤ 看片选片</a><a href="#s6">⑥ 导出</a><a href="#s7">⑦ AI 模型</a><a href="#s8">⑧ 待复核与标签库</a><a href="#s9">⑨ 同步</a><a href="#s10">⑩ LUT 与 RED</a><a href="#s11">⑪ 接入 AI 助手</a><a href="#faq">常见问题</a>
+</div>
+
+<h2 id="s1">① 安装启动 <small>只做一次</small></h2>
+<div class="tip warn"><b>当前版本仅支持 macOS</b>（Apple Silicon 体验最佳；Intel 可用，AI 打标建议走 API）。Windows 版移植中，关注玩椰第一时间获取。</div>
+<p>解压 zip → 进 <code>app</code> 文件夹 → 双击 <code>启动觅影.command</code>。第一次自动装依赖要等 1-3 分钟，之后秒开。<b>关窗口 = 退出觅影</b>；手动停用 <code>停止觅影.command</code>。</p>
+<div class="tip warn"><b>弹"无法打开，来自身份不明开发者"？</b>右键点击 <code>启动觅影.command</code> →「打开」→ 再点「打开」。macOS 的正常拦截，只需这一次。</div>
+<p><b>你只需准备</b>：一台 Mac ＋ Python ≥ 3.10（没有会引导安装）。<br>
+<b>脚本自动装</b>：全部运行依赖 ＋ 独立窗口 / HEIC 两个可选件（装不上自动跳过），网络不畅自动切国内镜像。<br>
+<b>按需自装</b>：Ollama（本地免费 AI，见⑦）、REDCINE-X PRO（看 R3D，见⑩）、厂商还原 LUT（见⑩）。</p>
+<img src="guide/01_first_run.jpg" alt="第一次打开">
+
+<h2 id="s2">② 建库：快扫一块盘 <small>第一次用必做</small></h2>
+<p>点右上角 <img class="inline" src="guide/ui_btn_quickscan.png" alt="快扫文件夹"> 选一块硬盘或大文件夹：登记素材 → 生成缩略图 → 建立可搜索底稿。进度在右下角，期间可正常使用。</p>
+<div class="tip"><b>放心扫：</b>原素材永远只读——绝不重命名 / 移动 / 删除 / 修改你的任何文件；所有数据只写进 <code>app/out/</code>。</div>
+<p>从首跑向导到建起第一个可搜索的库，30 秒看完：</p>
+<img src="guide/demo_firstrun.gif" alt="首跑向导与快扫建库">
+<p><b>快扫 vs 扫描</b>：快扫每夹只抽 2 张代表图快速建底稿；重点文件夹再「扫描文件夹」精扫——登记全部、补齐缩略图、逐一打标：</p>
+<img src="guide/demo_scanfull.gif" alt="扫描文件夹精扫入库">
+
+<h2 id="s3">③ 界面地图 <small>30 秒认全</small></h2>
+<img src="guide/ui_nav.png" alt="五入口">
+<p><b>素材库</b> 浏览和找 · <b>待复核</b> AI 提的新词等你确认 · <b>标签库</b> 标签管理后台 · <b>精选库</b> 打过星的好素材 · <b>设置</b> 模型 / 类目 / LUT / 备份。</p>
+<p>选中素材后用工具栏，每个按钮都有悬停说明：</p>
+<img src="guide/ui_toolbar.png" alt="工具栏">
+<div class="tip"><b>四个核心动作，各干一件事：</b><br>
+<b>快扫 / 扫描</b>　把素材"登记"进库——快扫抽样建底稿，扫描全量精整理；没登记的素材觅影不知道它存在<br>
+<b>生图</b>　生成代表帧缩略图——速览靠它认出素材、打标靠它给 AI 看、导出静帧直接取它<br>
+<b>打标</b>　让 AI 看图写标签和描述——打完才能被"人话"搜到，Agent 调用时才知道这段拍的是什么<br>
+<b>同步</b>　硬盘新增素材的增量对账——新增补进来，打过的不重打</div>
+
+<h2 id="s4">④ 找素材：三种方式</h2>
+<p><b>1. 直接搜</b>：顶栏搜索框输关键词回车，标签 / 别名 / 备注 / 文件名 / AI 描述都能命中。地标、颜色、天气、氛围随意组合——剪一支《长江的颜色》？挨个搜「紫色 长江」「金色 长江」「粉色 长江」，拍到过就能找到。</p>
+<img src="guide/02_search_grid.jpg" alt="搜索结果">
+<p><b>2. 左侧标签筛选</b>：按类目点选、叠加收窄，搜不准时最可靠。</p>
+<p><b>3. AI 找素材（金框）</b>：一句话描述，可带范围和导出指令，如「在 02_视频 里找武当山雪景航拍空镜，导出到桌面武当山备选」。AI 先给你看结果和"AI 理解"，<b>导出必须经你确认</b>。调模型慢几秒正常，Esc 取消。</p>
+<blockquote>AI 只有两个权限：搜索（只读）和导出（复制）。它没有任何能动你原始素材的通道。</blockquote>
+
+<h2 id="s5">⑤ 看片、选片</h2>
+<p>最基础的两个动作：<b>点缩略图看大图，点卡片标题看详情</b>——</p>
+<img src="guide/demo_basics.gif" alt="基础浏览：大图与详情">
+<p>点缩略图 = 全屏大图：<kbd>←</kbd><kbd>→</kbd> 翻页 · <kbd>1-5</kbd> 打星 · <kbd>0</kbd> 取消 · <kbd>Esc</kbd> 关闭。点卡片标题 = 详情抽屉（备注 / 标签 / 在 Finder 中显示）。</p>
+<img src="guide/03_lightbox.jpg" alt="全屏大图">
+<p>键盘流：方向键移动 · 空格选中 · 回车大图 · <kbd>I</kbd> 详情 · <kbd>A</kbd> 全选 · Shift+勾选范围多选。打过星的都进精选库。</p>
+
+<h2 id="s6">⑥ 拿走素材：导出</h2>
+<p>勾选素材（卡片左上角 ✓），点 <img class="inline" src="guide/ui_btn_export.png" alt="导出">：</p>
+<img src="guide/05_export.jpg" alt="导出弹窗">
+<p><b>复制原素材</b>（进剪辑）· <b>导出图片/帧</b>（每条视频取封面帧存图——<span class="gold">给 AI 喂真实底图的神器</span>，20 张原图不用开剪辑软件）· <b>清单</b>（JSON / CSV / TXT / Premiere / FCPXML）。导出永远是复制，原素材原地不动。真实成果：</p>
+<img src="guide/demo_export_result.gif" alt="导出图片帧的真实成果">
+
+<h2 id="s7">⑦ AI 模型：连不连、怎么连 <small>保姆级</small></h2>
+<p>不连模型：扫描 / 浏览 / LUT / 手动标签 / 按词搜索全可用。连上才有：自动打标 + AI 找素材。设置 → AI 模型，两张卡片二选一：</p>
+<img src="guide/08_settings.jpg" alt="设置页">
+<p><b>路线 A · 本地 Ollama</b>（完全免费，全程不出网）：</p>
+<p>1. <a href="https://ollama.com" target="_blank">ollama.com</a> 下载 macOS 版并启动（菜单栏出现小羊驼图标）→ 2. 拉视觉模型：<b>推荐 Qwen3.6 A3B</b>（MoE 只激活小部分参数，快且稳）——在 ollama.com/library 搜 <code>qwen3.6</code> 选 A3B 视觉版，把页面的 <code>ollama pull ...</code> 命令粘进终端执行 → 3. 觅影 设置 → 本地卡片：地址默认不改，「获取列表」选模型 → 测试连接 → 保存。</p>
+<div class="tip"><b>硬件参考：</b>Apple Silicon 统一内存 16GB 起步（小视觉模型）；Qwen3.6 A3B 建议 24GB 及以上；Intel Mac 直接走路线 B。</div>
+<p><b>路线 B · 小米 MiMo API</b>（速度王者，12 路并发打标）：</p>
+<p>1. 打开 <b>platform.xiaomimimo.com</b>，小米账号登录 → 2. 控制台创建 API Key 并复制保存（官方不定期有免费 Token 激励计划，以官网为准）→ 3. 觅影 设置 → API 卡片：地址 <code>https://api.xiaomimimo.com/v1</code>，粘 Key，模型 <code>mimo-v2.5</code> → 测试连接 → 保存。</p>
+<div class="tip"><b>为什么快：</b>API 模式自动 12 路并发，几千条素材一晚上打完；本地模式逐条来，胜在免费与绝对隐私。随时可切，已打过的不重打。Key 只存本机 <code>app/out/model_settings.json</code>。</div>
+<p>连好模型后，"让 AI 认识素材"的完整流程：空占位 → <b>全选 → 生图</b>（先看得见）→ <b>打标</b>（AI 写标签写描述，队列自动跑）→ 点开任意素材看 AI 描述和标签。<b>生图是为了看得见，打标是为了搜得到、Agent 读得懂</b>（已打过的不重打）：</p>
+<img src="guide/demo_tagging.gif" alt="AI 打标：从生图到描述">
+
+<h2 id="s8">⑧ AI 提的新词：待复核</h2>
+<p>AI 遇到词表没有的词不会直接塞进标签库，而是进「待复核」带置信度、出处素材和理由，点「同意加入」才收录——标签库不会越用越乱。标签库里可拖拽换类目、拖到另一个标签上合并、看 AI 整理建议。</p>
+<img src="guide/demo_candidates.gif" alt="待复核审核新词">
+<p>手动挂标签：选中素材 → 工具栏「标签」→ 点选 → 确定：</p>
+<img src="guide/demo_tag.gif" alt="手动挂标签">
+
+<h2 id="s9">⑨ 硬盘又拍了新素材？点「同步」</h2>
+<p>选中那块盘或文件夹，点 <img class="inline" src="guide/ui_btn_sync.png" alt="同步">：新增入库并打标、已打标的不重打、消失的清记录，放心反复点。文件改名 / 移动不丢标签——觅影认内容指纹，扫到新位置自动接管。</p>
+
+<h2 id="s10">⑩ LUT：灰片一键还原 <small>RED / 大疆 / 索尼</small></h2>
+<p>满硬盘 log 灰片没法选片？选中素材或整个文件夹 → 工具栏「LUT」→ 选还原预设 → 确认，缩略图批量渲染回正常色彩——<b>只改预览，绝不动原片</b>。设置页开「自动 LUT」后，扫描时自动识别 log 素材直接套好。</p>
+<img src="guide/demo_lut.gif" alt="RED 灰片一键套 LUT 还原">
+<div class="tip"><b>版权说明：</b>发布包不含任何厂商 LUT。请自行到官方渠道免费下载并在 设置 → LUT 预设 导入：DJI 官网（D-Log / D-Log M 还原）、Sony 专业站（S-Log3 还原）、RED 官网（IPP2 LUT 包）——仅用于个人学习与自有素材预览，详见 <code>app/luts/README.md</code>。</div>
+<div class="tip"><b>RED（R3D）用户：</b>预览 R3D 原片需安装 RED 官方 REDCINE-X PRO（含 REDline），请到 RED 官网下载并遵守其许可。不装不影响登记与搜索，只是没有缩略图；觅影不附带 RED 的任何软件组件。</div>
+
+<h2 id="s11">⑪ 接入 AI 助手 <small>进阶，但值得</small></h2>
+<p>觅影自带 MCP 接口，接进任何支持 MCP 的 AI 助手后，直接对 AI 说：「帮我找五段金色长江的航拍，先发截图我看看」→「第 2、4 段可以，原片发我」。搜索、预览、原片、导出底图全自动——这是摄影师 AI 工作流里筛选真实素材的那一环。接入方法见 <code>app/Hermes接入觅影.md</code>。</p>
+
+<h2 id="faq">常见问题</h2>
+<p><b>双击启动没反应 / 无法打开</b> —— 右键 → 打开 → 打开（见①）；再不行看 <code>app/out/app.log</code> 最后几行，私信发给玩椰。</p>
+<p><b>顶上黄条"还没连上 AI 模型"</b> —— 不影响使用；要 AI 打标就照⑦连模型，不想看点「不再提示」。</p>
+<p><b>搜不到某段素材</b> —— 确认那块盘扫过 → 换左侧标签筛选 → 还没打标就选中它点「打标」。</p>
+<p><b>硬盘显示离线</b> —— 盘没插，插上即恢复；离线期间记录绝不会被误删。</p>
+<p><b>R3D 素材没有缩略图</b> —— 需安装 RED 官方 REDCINE-X PRO（含 REDline），装好后选中点「生图」。</p>
+<p><b>灰片套了 LUT 还是灰的</b> —— 检查官方 .cube 是否已导入（设置 → LUT 预设）；缺文件时觅影不造假色，宁可保持灰片。</p>
+<p><b>几十张连号照片只显示一条素材</b> —— 延时序列折叠：同前缀连号图 ≥ 30 张自动合并为一条「延时」素材（取中间帧做封面）；阈值在 <code>app/config.yaml</code> 的 <code>timelapse_min_frames</code>。</p>
+<p><b>手机上能用吗</b> —— 能：设置 → 手机/局域网访问，开启后用带口令地址在手机浏览器打开（同一 WiFi）。</p>
+
+<div class="footer">
+<div style="font-size:16px;font-weight:700">觅影 · 玩椰 YEEHX 出品</div>
+<div class="muted" style="font-size:13px;margin-top:4px">为自己写的工具，开源分享给需要的人——AI 时代应该知识平权。<br>觉得好用，任一平台点个关注就是最好的支持。</div>
+<div style="margin-top:10px">
+<a class="btn" href="https://v.douyin.com/vcq9jo-kBZ0" target="_blank">抖音</a>
+<a class="btn" href="https://space.bilibili.com/371127301" target="_blank">B站</a>
+<a class="btn" href="https://www.xiaohongshu.com/user/profile/5c2cfc150000000005027f1d" target="_blank">小红书</a>
+<a class="btn" href="https://weibo.com/u/7854994467" target="_blank">微博</a>
+<a class="btn" href="https://www.yeehx.com" target="_blank">官网 yeehx.com</a>
+</div>
+<div class="muted" style="font-size:12px;margin-top:8px">视频号 / 公众号：微信搜「玩椰」 · 合作 hi@yeehx.com</div>
+</div>
+
+</div>
+</body>
+</html>

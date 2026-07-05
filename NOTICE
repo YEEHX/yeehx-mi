@@ -1,0 +1,33 @@
+觅影 (MiYing) — 本地 AI 影视素材库
+Copyright (C) 2026 玩椰 / YEEHX (playyestudio@gmail.com)
+
+本程序是自由软件：你可以依据自由软件基金会发布的 GNU Affero 通用公共许可证
+（第 3 版或更高版本）的条款，再分发和/或修改它。详见随附的 LICENSE 文件。
+
+本程序按"现状"提供，不含任何形式的担保，包括但不限于适销性和特定用途适用性
+的默示担保。详见 GNU Affero 通用公共许可证第 15、16 条。
+
+────────────────────────────────────────────────────
+
+商标与品牌声明 / Trademark Notice
+
+依据 AGPL-3.0 第 7(e) 条，以下内容不在本许可证授权范围内：
+
+- 「玩椰」「YEEHX」「觅影」名称（含中英文及任何变体写法）
+- YEEHX 签名标识、觅影 Logo 及本仓库内的一切品牌视觉资产
+  （app/web/ 下的 logo 与品牌图片文件）
+
+「YEEHX」为已注册商标。你可以依据 AGPL-3.0 自由使用、修改、再分发本软件的
+代码，但**分发修改版时不得使用上述名称与标识**，须为你的版本另取名称，并
+移除品牌视觉资产，同时不得暗示与玩椰 / YEEHX 存在官方关联或背书。
+
+Under section 7(e) of AGPL-3.0, this license does NOT grant rights to use:
+the names "玩椰", "YEEHX", "觅影"/"MiYing" (in any form), the YEEHX signature
+mark, the MiYing logo, or any brand visual assets in this repository.
+"YEEHX" is a registered trademark. If you distribute a modified version,
+you must rename it, remove the brand assets, and must not imply any official
+affiliation with or endorsement by 玩椰 / YEEHX.
+
+原作者署名（Copyright (C) 2026 玩椰 / YEEHX）依据许可证要求应予保留。
+
+官网 / Official site: https://yeehx.com

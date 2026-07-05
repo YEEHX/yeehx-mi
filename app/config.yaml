@@ -1,0 +1,82 @@
+# 玩椰 YEEHX · 觅影 — 配置
+# 改这一个文件就能切模型、调阈值；代码不用动。
+# 模型的临时切换在「设置」页里改（落 out/model_settings.json），不会动这个带注释的文件。
+
+# AI 生成素材识别：文件名/文件夹命中这些 → 标"AI"（来源·设备标签）。
+ai_markers: [即梦, 可灵, sora, runway, midjourney, "mj_", comfyui, stable, "sdxl", 海螺,
+             pika, luma, kling, vidu, 通义, 文生, 图生视频, ai生成, "_ai", "ai素材", 数字人]
+
+vision:
+  provider: local                       # local（本地 ollama）或 api（OpenAI 兼容）
+  local_base_url: http://localhost:11434/v1
+  local_api_key: ollama
+  local_model: "qwen3.6:35b"            # ⚠️ 冒号 35b；别用 -mlx（纯文本无视觉）
+  api_base_url: https://api.openai.com/v1
+  remote_api_key: ""
+  api_model: ""
+  compare_model: ""                     # 留空=不对比
+  timeout: 240
+  temperature: 0.1
+
+# 官方 .cube LUT（颜色模式，手动套；只为重生成缩略图，不参与扫描/定位/打标）。
+luts:
+  "D-Log":   luts/dji_dlog_709.cube
+  "D-Log M": luts/dji_dlogm_709.cube
+  "S-Log3":  luts/sony_slog3_709.cube
+  "RED Log3G10": luts/nikon_nlog_709.cube
+
+# 机型 → log 猜测表（仅供"来源·设备"识别兜底；LUT 在觅影里是手动的，不自动套）。
+camera_profile_map:
+  "DJI": "D-Log"
+  "FC": "D-Log"
+  "L3D": "D-Log"
+  "Hasselblad": "D-Log"
+  "Mavic": "D-Log"
+  "Phantom": "D-Log"
+  "Inspire": "D-Log"
+  "ILCE-7S": "S-Log3"
+  "ILCE-7": "S-Log3"
+  "ILCE-1": "S-Log3"
+  "ZV-E": "S-Log3"
+  "FX3": "S-Log3"
+  "FX30": "S-Log3"
+  "FX6": "S-Log3"
+  "RED": "RED Log3G10"
+  "KOMODO": "RED Log3G10"
+  "V-RAPTOR": "RED Log3G10"
+  "NIKON Z": "N-Log"
+  "Z 6": "N-Log"
+  "Z 8": "N-Log"
+  "Z 9": "N-Log"
+
+# 按文件名认 log 类型（也用于来源·设备兜底）。
+filename_profile_map:
+  "(^|_)C\\d{4,}": "S-Log3"
+  "_D_": "D-Log"
+
+derivative:
+  max_px: 1024             # 缩略图最长边
+
+scan:
+  rep_samples: 2           # 快扫时每个有素材的文件夹取几张代表
+
+# 任务队列并发
+tasks:
+  index: 2
+  thumb: 3
+  text: 4
+  ai_local: 1             # 本地模型默认 1 线（强机可调 2）
+  ai_api: 12              # API 模型并发（MiMo 限流 100 RPM：429 重试多就回调到 10）
+  export: 2
+
+frames:
+  sharp_samples: [0.4, 0.5, 0.6]
+
+thresholds:
+  timelapse_min_frames: 30
+  guess_conf_min: 0.7     # AI 猜地点写标签的最低置信度
+
+film_folder_keywords: ["成片", "交付", "output", "导出", "export", "final", "完成片"]
+
+paths:
+  out: out                 # 一切写入只落 app/out/（数据库/缩略图/导出记录）
