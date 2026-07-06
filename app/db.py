@@ -417,3 +417,18 @@ def reset_db():
     _DB_GEN += 1            # 其他线程下次 connect() 自动换上这个已就绪的新库
     _LOCAL.gen = _DB_GEN    # 本线程这条新连接登记为新代，不用自废重连
     return conn
+
+
+def adopt_db():
+    """升级助手搬来旧版本的库文件后调用：不删任何文件，只让全部线程换上新句柄。
+
+    与 reset_db 的区别：reset 是"删掉重建空库"，adopt 是"库文件已被外部替换，
+    重新打开 + 跑一遍幂等建表把老库结构补齐到当前版本"。切代数的顺序同 reset_db
+    （先建好再切，避免其他线程撞上半初始化状态）。
+    """
+    global _DB_GEN
+    close_local()
+    conn = init_db()        # 幂等：CREATE IF NOT EXISTS + _migrate 补列，老库无损升级
+    _DB_GEN += 1
+    _LOCAL.gen = _DB_GEN
+    return conn

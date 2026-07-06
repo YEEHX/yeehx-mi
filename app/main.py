@@ -1628,6 +1628,123 @@ def api_setup_done(payload: dict = Body(default={})):
     return {"ok": True}
 
 
+# ═══════════ 升级助手：发现旧版本的库，一键搬进新家（v2.1.1）═══════════
+# 场景：用户下载新版 zip 解压出 MiYing-v新版/，旧版 MiYing-v旧版/ 还在旁边，
+# 库、标签、设置全住在旧文件夹 app/out/ 里。这里自动发现 + 一键迁移，
+# 用户不需要知道 app/out 是什么。
+
+_UPGRADE_SCAN_PARENT: Path | None = None    # 测试注入扫描根；None = 仓库根的父目录
+
+
+def _upgrade_candidates(scan_parent: Path | None = None) -> list[dict]:
+    """自己库空时，扫兄弟目录找旧安装（*/app/out/miying.sqlite）。库有数据则返回空。"""
+    try:
+        if db.connect().execute("SELECT 1 FROM assets LIMIT 1").fetchone():
+            return []
+    except sqlite3.Error:
+        pass
+    me = Path(__file__).resolve().parent.parent          # 仓库根（app/ 的上一层）
+    parent = (scan_parent or _UPGRADE_SCAN_PARENT or me.parent).resolve()
+    found: list[dict] = []
+    try:
+        siblings = list(parent.iterdir())
+    except OSError:
+        return []
+    for sib in siblings:
+        try:
+            if not sib.is_dir() or sib.resolve() == me.resolve():
+                continue
+            dbf = sib / "app" / "out" / "miying.sqlite"
+            if not dbf.exists():
+                continue
+            c = sqlite3.connect(f"file:{dbf.as_posix()}?mode=ro", uri=True, timeout=3)
+            n = c.execute("SELECT COUNT(*) FROM assets").fetchone()[0]
+            c.close()
+            if n == 0:
+                continue
+            ver = ""
+            m = re.search(r'__version__\s*=\s*"([^"]+)"',
+                          (sib / "app" / "__init__.py").read_text(encoding="utf-8"))
+            if m:
+                ver = m.group(1)
+        except (OSError, sqlite3.Error, UnicodeDecodeError):
+            continue
+        found.append({"path": str(sib), "name": sib.name, "assets": n,
+                      "version": ver, "mtime": dbf.stat().st_mtime})
+    found.sort(key=lambda x: -x["mtime"])
+    return found
+
+
+@app.get("/api/upgrade/candidates")
+def api_upgrade_candidates():
+    return {"candidates": _upgrade_candidates()}
+
+
+@app.post("/api/upgrade/migrate")
+def api_upgrade_migrate(payload: dict = Body(...)):
+    """把旧安装的 app/out 搬进当前数据目录。只收候选列表里的路径（防任意路径注入）。
+    同一块盘上是改目录名的速度；跨盘自动退化为拷贝。"""
+    src_root = Path(str(payload.get("path", ""))).resolve()
+    if str(src_root) not in {c["path"] for c in _upgrade_candidates()}:
+        raise HTTPException(400, "该路径不在可迁移列表里（或当前库已有数据）")
+    src_out = src_root / "app" / "out"
+    src_db = src_out / "miying.sqlite"
+    # 旧实例若还在运行会锁着库——先独占试锁，锁不住就请用户先停旧版
+    try:
+        probe = sqlite3.connect(str(src_db), timeout=1)
+        probe.execute("BEGIN IMMEDIATE")
+        probe.rollback()
+        probe.close()
+    except sqlite3.OperationalError:
+        raise HTTPException(409, "旧版本觅影可能还在运行：请先双击旧文件夹里的「停止觅影」，再回来点一次")
+
+    cfg = get_cfg()
+    dst_out = cfg.out_dir
+    dst_out.mkdir(parents=True, exist_ok=True)
+    db.close_local()                     # 放掉自己空库的句柄（Windows 下不放拿不动文件）
+
+    def _move(s: Path, d: Path):
+        if d.exists():
+            shutil.rmtree(d) if d.is_dir() else d.unlink()
+        try:
+            os.rename(s, d)              # 同卷瞬间完成
+        except OSError:
+            shutil.copytree(s, d) if s.is_dir() else shutil.copy2(s, d)
+
+    moved: list[str] = []
+    dst_db = Path(db._db_path())
+    # ⚠ 目标位置的空库必须连同 -wal/-shm 一起清干净再搬：启动时建的空库是 WAL
+    # 模式，只删主文件的话，搬来的旧库会被旁边残留的 WAL 副文件"认亲"，
+    # SQLite 按错误的 WAL 恢复 → database disk image is malformed（实测踩坑）。
+    for suffix in ("", "-wal", "-shm"):
+        p = Path(str(dst_db) + suffix)
+        if p.exists():
+            p.unlink()
+    # 库文件本体搬到"当前生效的库路径"（尊重 YEEHX_DB 覆盖，测试与生产同一条路）
+    _move(src_db, dst_db)
+    for suffix in ("-wal", "-shm"):      # 旧库自己的 WAL 残页一起带走，不丢最后一批写入
+        p = Path(str(src_db) + suffix)
+        if p.exists():
+            _move(p, Path(str(dst_db) + suffix))
+    moved.append("miying.sqlite")
+    # 缩略图、参考图、模型设置、用户 LUT——原样搬；应用设置只在自己没有时才带
+    for name in ("thumbs", "refimg", "model_settings.json", "luts_user.json"):
+        s = src_out / name
+        if s.exists():
+            _move(s, dst_out / name)
+            moved.append(name)
+    s = src_out / "app_settings.json"
+    if s.exists() and not (dst_out / "app_settings.json").exists():
+        shutil.copy2(s, dst_out / "app_settings.json")
+        moved.append("app_settings.json")
+
+    db.adopt_db()                        # 全线程换新句柄 + 幂等建表把老库补齐到当前版本
+    import app.config as _cfgmod         # 模型设置等是启动时读入内存的——置空让下次现取
+    _cfgmod._CFG = None
+    n = db.connect().execute("SELECT COUNT(*) FROM assets").fetchone()[0]
+    return {"ok": True, "moved": moved, "assets": n, "from": str(src_root)}
+
+
 @app.post("/api/settings/model")
 def api_settings_model(payload: dict = Body(...)):
     get_cfg().save_model_settings(payload)

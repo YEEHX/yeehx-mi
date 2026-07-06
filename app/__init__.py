@@ -8,5 +8,5 @@
 这是全新自包含包，不依赖旧的 phase0。
 """
 
-__version__ = "2.1.0"
+__version__ = "2.1.1"
 APP_NAME = "玩椰 YEEHX · 觅影"

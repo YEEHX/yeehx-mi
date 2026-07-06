@@ -720,11 +720,26 @@ async function checkAIGuide(){if($('#setupwiz'))return;let ok=false;try{const d=
   document.querySelector('.top').after(el);}
 
 /* ══ 首跑向导：欢迎承诺 → AI 模型三选一 → 上手三步。服务端 setup_done 判定 ══ */
-let WIZ_STATUS=null;
+let WIZ_STATUS=null,WIZ_UPGRADE=null;
 async function maybeSetupWizard(){try{WIZ_STATUS=await jget('/api/setup/status',null,true)}catch{return}
   if(!WIZ_STATUS.first_run)return;
   localStorage.setItem('miying_welcomed','1');   // 向导替代旧欢迎抽屉，防双弹
+  // 升级搬家优先：旁边有旧版本的库（比如 MiYing-v2.0.0 文件夹），先问搬不搬——
+  // 搬完 reload 直接进主界面（库都在，向导自动不再弹），全新用户才走三步向导
+  try{const u=await jget('/api/upgrade/candidates',null,true);
+    if(u.candidates&&u.candidates.length){WIZ_UPGRADE=u.candidates[0];wizShowUpgrade();return}}catch{}
   wizShow(1);}
+function wizShowUpgrade(err){const c=WIZ_UPGRADE;
+  wizBox(`<div style="text-align:center"><img src="/web/觅影-logo.png" style="height:44px" onerror="this.style.display='none'">
+    <div style="font-size:19px;font-weight:800;margin:12px 0 4px">欢迎升级，先把库搬过来</div>
+    <div class="muted" style="margin-bottom:14px">检测到旁边的旧版本觅影还有你的素材库——一键搬进新版本，标签、星级、设置全部保留，不用重扫。</div></div>
+    <div class="pledge"><span class="ico">库</span><div><b>${esc(c.name)}${c.version?'（v'+esc(c.version)+'）':''}</b><span class="muted">${Number(c.assets).toLocaleString()} 条素材 · ${esc(c.path)}</span></div></div>
+    ${err?`<div style="color:#e05c5c;font-size:13px;margin:10px 2px 0">${esc(err)}</div>`:''}
+    <div class="wizfoot"><button class="btn red" id="wizMigBtn" onclick="wizMigrate()">一键搬过来（推荐）</button><button class="btn ghost" onclick="wizShow(1)">不搬，全新开始</button></div>`);}
+async function wizMigrate(){const b=$('#wizMigBtn');if(b){b.disabled=true;b.textContent='正在搬家…（库大要几分钟，别关窗口）'}
+  try{const r=await jpost('/api/upgrade/migrate',{path:WIZ_UPGRADE.path});
+    toast(`搬家完成：${Number(r.assets).toLocaleString()} 条素材已就位`,'ok');setTimeout(()=>location.reload(),600);}
+  catch(e){wizShowUpgrade(String(e&&e.message||'搬家失败，请重试').slice(0,160));}}
 async function wizOpen(){WIZ_STATUS=await jget('/api/setup/status',null,true).catch(()=>({arch:'',ollama_alive:false}));wizShow(1);}   // 设置页「重看引导」
 function wizBox(inner){let w=$('#setupwiz');if(!w){w=document.createElement('div');w.id='setupwiz';document.body.appendChild(w)}
   w.innerHTML=`<div class="wizcard">${inner}</div>`;}

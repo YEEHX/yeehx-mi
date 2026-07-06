@@ -26,11 +26,19 @@ alive() { curl -s -m 2 "http://127.0.0.1:$PORT/api/health" 2>/dev/null | grep -q
 
 echo "=== 玩椰 YEEHX · 觅影 ==="
 
-# 0) 已经在运行？直接开浏览器走人
+# 0) 已经在运行？→ 先对版本号：同版本直接开浏览器；不同版本（比如刚下载的新版，
+#    旧版服务还在后台跑）绝不能把用户带进旧界面——落到下面第 3 步的接管逻辑，
+#    停掉旧实例换本版本。（2026-07-06 真实用户踩坑：下载 2.1.0 双击启动，
+#    看到的还是后台没退的 2.0.0，且一直提示"有更新"。）
+MY_VER=$(grep -o '__version__ = "[^"]*"' "$APP_DIR/__init__.py" | cut -d'"' -f2)
 if alive; then
-  echo "觅影已在运行 → http://127.0.0.1:$PORT （要重启请先双击「停止觅影.command」）"
-  open "http://127.0.0.1:$PORT"
-  close_window_and_exit
+  RUN_VER=$(curl -s -m 2 "http://127.0.0.1:$PORT/api/health" 2>/dev/null | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
+  if [ "$RUN_VER" = "$MY_VER" ]; then
+    echo "觅影已在运行 → http://127.0.0.1:$PORT （要重启请先双击「停止觅影.command」）"
+    open "http://127.0.0.1:$PORT"
+    close_window_and_exit
+  fi
+  echo "端口上运行着另一个版本的觅影（v${RUN_VER:-未知} → 本包 v$MY_VER），自动停旧换新…"
 fi
 
 # 1) Python3，且必须 ≥ 3.10（老 mac 系统自带 3.9 会在别处报错，这里先拦住）

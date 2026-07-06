@@ -61,6 +61,26 @@ def _alive() -> bool:
         return False
 
 
+def _running_version() -> str:
+    """端口上活着的那个觅影的版本号（拿不到返回空串）。"""
+    try:
+        with urllib.request.urlopen(URL + "/api/health", timeout=2) as r:
+            return str(json.loads(r.read().decode("utf-8", "replace")).get("version", ""))
+    except Exception:
+        return ""
+
+
+def _my_version() -> str:
+    """本安装包的版本号：直接读文本，不 import app 包（依赖可能还没装）。"""
+    try:
+        import re as _re
+        m = _re.search(r'__version__\s*=\s*"([^"]+)"',
+                       (APP_DIR / "__init__.py").read_text(encoding="utf-8"))
+        return m.group(1) if m else ""
+    except OSError:
+        return ""
+
+
 def _pid_command(pid: int) -> str:
     return _ps(f"(Get-CimInstance Win32_Process -Filter \"ProcessId={int(pid)}\").CommandLine").strip()
 
@@ -191,10 +211,16 @@ def _spawn_detached(args: list[str]) -> subprocess.Popen:
 def start() -> int:
     _say("=== 玩椰 YEEHX · 觅影 ===")
     if _alive():
-        _say(f"觅影已在运行 → {URL} （要重启请先双击「停止觅影.bat」）")
-        import webbrowser
-        webbrowser.open(URL)
-        return 0
+        # 版本对账：同版本直接开浏览器；不同版本（新包旁边跑着旧服务）绝不能把
+        # 用户带进旧界面——继续往下走，_cleanup_stale 会验明正身停掉旧实例。
+        # （2026-07-06 真实用户踩坑：下载 2.1.0 双击启动，看到的还是旧 2.0.0。）
+        rv, mv = _running_version(), _my_version()
+        if rv == mv:
+            _say(f"觅影已在运行 → {URL} （要重启请先双击「停止觅影.bat」）")
+            import webbrowser
+            webbrowser.open(URL)
+            return 0
+        _say(f"端口上运行着另一个版本的觅影（v{rv or '未知'} → 本包 v{mv}），自动停旧换新…")
 
     if not ensure_deps():
         return 1
