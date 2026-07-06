@@ -108,7 +108,7 @@ def generate(asset_id: str, lut_name: str | None = None) -> dict:
             return {"ok": False, "error": "RED .R3D 抽帧失败：请确认 REDCINE-X PRO/REDline 可用",
                     "kind": kind, "unsupported": True}
         if kind == "raw" or src.suffix.lower() in RAW_EXT:
-            return {"ok": False, "error": "RAW 解码失败：建议安装 exiftool（brew install exiftool）或 pip 装 rawpy", "kind": kind}
+            return {"ok": False, "error": "RAW 解码失败：建议安装 exiftool（mac：brew install exiftool；Windows：exiftool.org 下载）或 pip 装 rawpy", "kind": kind}
         return {"ok": False, "error": "缩略图生成失败", "kind": kind}
 
     # 主色（套 LUT 后重算）

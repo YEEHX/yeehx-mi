@@ -13,10 +13,42 @@ import tempfile
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 from app.media import redline
 
 _FFMPEG: str | None = None
+
+
+# ── cv2 中文路径安全 I/O ──────────────────────────────────────────────────
+# Windows 上 cv2.imread/imwrite 走 C 层 ANSI fopen：中文/生僻字/emoji 路径直接读写失败
+# （用户解压到 D:\觅影\、素材盘全中文目录是常态）。统一改为 Python 读写字节 +
+# imdecode/imencode——两平台同一条代码路径，mac 行为不变。业务代码禁止直接调 cv2.imread/imwrite。
+def imread_u(path: Path | str, flags: int = cv2.IMREAD_COLOR):
+    """cv2.imread 的跨平台安全版。失败返回 None（与 cv2.imread 一致）。"""
+    try:
+        data = np.frombuffer(Path(path).read_bytes(), dtype=np.uint8)
+    except OSError:
+        return None
+    if data.size == 0:
+        return None
+    return cv2.imdecode(data, flags)
+
+
+def imwrite_u(path: Path | str, img, params: list | None = None) -> bool:
+    """cv2.imwrite 的跨平台安全版。按扩展名编码后用 Python 写字节。"""
+    ext = Path(path).suffix.lower() or ".jpg"
+    try:
+        ok, buf = cv2.imencode(ext, img, params or [])
+    except cv2.error:
+        return False
+    if not ok:
+        return False
+    try:
+        Path(path).write_bytes(buf.tobytes())
+        return True
+    except OSError:
+        return False
 
 
 def ffmpeg_exe() -> str:
@@ -95,7 +127,7 @@ def _grab(path: Path, ts: float | None, dest: Path, max_px: int, lut_filter: str
 
 
 def _sharpness(img_path: Path) -> float:
-    img = cv2.imread(str(img_path), cv2.IMREAD_GRAYSCALE)
+    img = imread_u(img_path, cv2.IMREAD_GRAYSCALE)
     if img is None:
         return -1.0
     return float(cv2.Laplacian(img, cv2.CV_64F).var())
@@ -151,17 +183,19 @@ def pil_to_jpeg(path: Path, dest: Path, max_px: int | None = None) -> bool:
         scale = max_px / max(h, w)
         if scale < 1:
             img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
-    return bool(cv2.imwrite(str(dest), img, [cv2.IMWRITE_JPEG_QUALITY, 92]))
+    return imwrite_u(dest, img, [cv2.IMWRITE_JPEG_QUALITY, 92])
 
 
 def raw_to_jpeg(src: Path, dest: Path) -> bool:
-    """rawpy 解 RAW → JPEG（exiftool 提不出内嵌预览时的兜底）。没装 rawpy 返回 False。"""
+    """rawpy 解 RAW → JPEG（exiftool 提不出内嵌预览时的兜底）。没装 rawpy 返回 False。
+    注意：rawpy.imread(str) 在 Windows 上也是 ANSI fopen（中文路径炸），传文件对象。"""
     try:
         import rawpy
-        with rawpy.imread(str(src)) as raw:
-            rgb = raw.postprocess(use_camera_wb=True, output_bps=8)
+        with open(src, "rb") as fh:
+            with rawpy.imread(fh) as raw:
+                rgb = raw.postprocess(use_camera_wb=True, output_bps=8)
         img = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-        return bool(cv2.imwrite(str(dest), img, [cv2.IMWRITE_JPEG_QUALITY, 92]))
+        return imwrite_u(dest, img, [cv2.IMWRITE_JPEG_QUALITY, 92])
     except Exception:
         return False
 
@@ -170,7 +204,7 @@ def photo_derivative(src_img: Path, out_dir: Path, asset_id: str, cfg) -> tuple[
     """照片/已抽预览 → 缩放成派生图。"""
     out_dir.mkdir(parents=True, exist_ok=True)
     dest = out_dir / f"{asset_id}.jpg"
-    img = cv2.imread(str(src_img), cv2.IMREAD_COLOR)
+    img = imread_u(src_img, cv2.IMREAD_COLOR)
     if img is None:
         img = pil_imread(src_img)   # HEIC/iPhone 照片 cv2 解不了 → PIL(+pillow-heif) 兜底
     if img is None:
@@ -181,7 +215,7 @@ def photo_derivative(src_img: Path, out_dir: Path, asset_id: str, cfg) -> tuple[
     scale = cfg.max_px / max(h, w)
     if scale < 1:
         img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
-    cv2.imwrite(str(dest), img, [cv2.IMWRITE_JPEG_QUALITY, 90])
+    imwrite_u(dest, img, [cv2.IMWRITE_JPEG_QUALITY, 90])
     return ([dest], {"src_px": f"{w}x{h}"})
 
 

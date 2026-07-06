@@ -6,17 +6,17 @@
 
 > **铁律**：原素材**只读**（绝不重命名/移动/删除/改写）；一切写入只落数据目录 `app/out/`；数据库可重建。
 >
-> **平台**：目前仅支持 **macOS**（Finder 选文件夹、diskutil 卷身份、REDline 解码都是 mac 专属）。
+> **平台**：**macOS + Windows**。平台差异全部收口在 `app/core/osplat.py`（卷身份：mac diskutil UUID / Win 卷GUID；系统对话框：osascript / PowerShell；定位：Finder / 资源管理器）。R3D 的 REDline 解码依赖 RED 官方软件，装了就有。
 
 ---
 
 ## 怎么跑
 
-**最简单**：双击 `app/启动觅影.command`。第一次会自动建环境、装依赖（要等几分钟，只第一次慢）。服务转**后台运行**：浏览器自动打开后终端窗口自己关掉；依赖没变化时二次启动秒开；已在运行时双击直接开浏览器。
+**最简单**：mac 双击 `app/启动觅影.command`，Windows 双击 `app/启动觅影.bat`。第一次会自动建环境、装依赖（要等几分钟，只第一次慢）。服务转**后台运行**：浏览器自动打开后终端窗口自己关掉；依赖没变化时二次启动秒开；已在运行时双击直接开浏览器。
 
-**停止 / 重启**：双击 `app/停止觅影.command`（按 PID 精确停，连 MCP 自动拉起的实例一并识别，不误杀其他项目）；重启 = 先停止再启动。
+**停止 / 重启**：mac 双击 `app/停止觅影.command`，Windows 双击 `app/停止觅影.bat`（都按 PID/命令行验明正身精确停，连 MCP 自动拉起的实例一并识别，不误杀其他项目）；重启 = 先停止再启动。Windows 的启动逻辑在 `app/winlaunch.py`（bat 只负责找 Python 和建 venv）。
 
-要求 **Python ≥ 3.10**（启动脚本会检查并提示；老 mac 自带 3.9 不行）。
+要求 **Python ≥ 3.10**（启动脚本会检查并提示；老 mac 自带 3.9 不行，Windows 没装 Python 会自动打开下载页引导）。
 
 > 双击若被拦「无法验证开发者」：右键该文件 →「打开」→ 再「打开」，只需这一次。
 
@@ -26,6 +26,15 @@
 cd "仓库根目录"            # 含 app/ 的那一层
 python3 -m venv app/.venv && source app/.venv/bin/activate
 pip install -r app/requirements.txt        # 复现/发布环境用 requirements.lock.txt
+python -m uvicorn app.main:app --port 8788
+```
+
+Windows 手动（排错用，PowerShell）：
+
+```powershell
+cd 仓库根目录
+py -3 -m venv app\.venv; app\.venv\Scripts\Activate.ps1
+pip install -r app\requirements.txt
 python -m uvicorn app.main:app --port 8788
 ```
 

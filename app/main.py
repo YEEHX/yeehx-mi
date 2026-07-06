@@ -28,6 +28,7 @@ from app import db, tasks, export, __version__ as APP_VERSION
 from app import brand as brand_mod
 from app.config import get_cfg
 from app.core import volumes, folders, assets as A, tags as TG, candidates as C, tag_merges as TM, inheritance, search as S
+from app.core import osplat
 from app.core import tag_io
 from app.core import files as fmod
 from app.scan import scanner
@@ -186,7 +187,8 @@ def index():
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "app": "觅影", "version": APP_VERSION, "fts": db.FTS_OK}
+    return {"ok": True, "app": "觅影", "version": APP_VERSION, "fts": db.FTS_OK,
+            "platform": osplat.PLATFORM, "file_manager": osplat.FILE_MANAGER}
 
 
 _BRAND_TAMPERED: bool | None = None   # 启动后首次访问时算一次，进程内缓存
@@ -245,14 +247,11 @@ def api_update_check():
 
 
 # ── 路径白名单（3-1/3-2/3-3）──────────────────────────────────────────────
-# 浏览/读参考图/导出 只允许落在：/Volumes（外接盘）、用户主目录、
-# 以及 YEEHX_FS_ROOTS（冒号分隔，给测试/特殊场景用）。系统目录一律 403。
+# 浏览/读参考图/导出 只允许落在：mac=/Volumes（外接盘）+用户主目录；Windows=各盘符+主目录
+# （但 Windows/Program Files/ProgramData/AppData 等系统区仍然拒绝）。
+# 额外白名单走 YEEHX_FS_ROOTS（os.pathsep 分隔，给测试/特殊场景用）。系统目录一律 403。
 def _allowed_roots() -> list[Path]:
-    roots = [Path("/Volumes"), Path.home()]
-    for part in (os.environ.get("YEEHX_FS_ROOTS") or "").split(":"):
-        if part.strip():
-            roots.append(Path(part.strip()))
-    return roots
+    return osplat.allowed_browse_roots()
 
 
 def _path_allowed(p: Path) -> bool:
@@ -260,6 +259,13 @@ def _path_allowed(p: Path) -> bool:
         rp = p.expanduser().resolve()
     except OSError:
         return False
+    for deny in osplat.denied_browse_roots():
+        try:
+            d = deny.resolve()
+        except OSError:
+            continue
+        if rp == d or d in rp.parents:
+            return False
     for root in _allowed_roots():
         try:
             r = root.resolve()
@@ -271,10 +277,16 @@ def _path_allowed(p: Path) -> bool:
 
 
 # ── Browse / import ─────────────────────────────────────────────────────
-@app.get("/api/fs")
-def api_fs(dir: str = Query("")):
-    if not dir or Path(dir).resolve() == Path("/"):
-        roots = []
+def _root_cards() -> list[dict]:
+    """根目录页的卡片：mac=/Volumes 各盘；Windows=各盘符（卷标显示名）。都追加桌面。"""
+    roots = []
+    if osplat.IS_WIN:
+        for p in osplat.win_drives():
+            try:
+                roots.append(_fs_card(str(p), scan_counts=False))
+            except OSError:
+                continue
+    else:
         vroot = Path("/Volumes")
         if vroot.exists():
             for p in sorted(vroot.iterdir()):
@@ -288,14 +300,24 @@ def api_fs(dir: str = Query("")):
                 if p.name == "Macintosh HD":
                     continue
                 roots.append(_fs_card(str(p), scan_counts=False))
-        desktop = Path.home() / "Desktop"
-        if desktop.exists():
-            roots.append(_fs_card(str(desktop), scan_counts=False))
-        return {"dir": "", "crumbs": [], "roots": roots, "subdirs": [], "assets": [], "direct_media": 0}
+    desktop = Path.home() / "Desktop"
+    if not desktop.exists() and osplat.IS_WIN:
+        onedrive = Path.home() / "OneDrive" / "Desktop"   # OneDrive 重定向桌面（Win11 常见）
+        if onedrive.exists():
+            desktop = onedrive
+    if desktop.exists():
+        roots.append(_fs_card(str(desktop), scan_counts=False))
+    return roots
+
+
+@app.get("/api/fs")
+def api_fs(dir: str = Query("")):
+    if not dir or (not osplat.IS_WIN and Path(dir).resolve() == Path("/")):
+        return {"dir": "", "crumbs": [], "roots": _root_cards(), "subdirs": [], "assets": [], "direct_media": 0}
 
     base = Path(dir)
     if not _path_allowed(base):
-        raise HTTPException(403, "该路径不在允许浏览的范围（仅 /Volumes 下的盘和用户目录）")
+        raise HTTPException(403, "该路径不在允许浏览的范围（仅各硬盘/盘符和用户目录）")
     if not base.exists():
         raise HTTPException(404, "路径不存在")
     info = volumes.peek(dir)
@@ -303,7 +325,7 @@ def api_fs(dir: str = Query("")):
     entries, direct_media = [], 0
     try:
         for e in sorted(base.iterdir(), key=lambda x: x.name.lower()):
-            if e.name.startswith("."):
+            if osplat.should_skip_name(e.name):
                 continue
             if e.is_dir():
                 if e.suffix.lower() in fmod.PKG_EXT:
@@ -351,38 +373,25 @@ def api_dialog_export_folder():
 
 @app.get("/api/dialog/lut_file")
 def api_dialog_lut_file():
-    if os.uname().sysname != "Darwin":
-        raise HTTPException(409, "当前系统不支持 Finder 选择")
     try:
-        r = subprocess.run(
-            ["osascript", "-e", 'POSIX path of (choose file with prompt "选择 .cube LUT 文件")'],
-            capture_output=True, text=True, timeout=300,
-        )
-    except subprocess.SubprocessError as e:
+        path = osplat.choose_file("选择 .cube LUT 文件", ext=".cube", filter_name="LUT")
+    except osplat.DialogCancelled as e:
         raise HTTPException(409, str(e))
-    path = r.stdout.strip()
-    if r.returncode != 0 or not path:
-        raise HTTPException(409, "未选择文件")
-    p = Path(path.rstrip("/"))
+    except osplat.DialogUnsupported as e:
+        raise HTTPException(409, f"当前系统不支持系统选择：{e}")
+    p = Path(path)
     if p.suffix.lower() != ".cube":
         raise HTTPException(400, "请选择 .cube 文件")
     return {"path": str(p), "name": p.stem}
 
 
 def _choose_folder(prompt: str):
-    if os.uname().sysname != "Darwin":
-        raise HTTPException(409, "当前系统不支持 Finder 选择")
     try:
-        r = subprocess.run(
-            ["osascript", "-e", f'POSIX path of (choose folder with prompt "{prompt}")'],
-            capture_output=True, text=True, timeout=300,
-        )
-    except subprocess.SubprocessError as e:
+        return {"path": osplat.choose_folder(prompt)}
+    except osplat.DialogCancelled as e:
         raise HTTPException(409, str(e))
-    path = r.stdout.strip()
-    if r.returncode != 0 or not path:
-        raise HTTPException(409, "未选择文件夹")
-    return {"path": path.rstrip("/")}
+    except osplat.DialogUnsupported as e:
+        raise HTTPException(409, f"当前系统不支持系统选择：{e}")
 
 
 # ── Search / facets ─────────────────────────────────────────────────────
@@ -517,7 +526,7 @@ def api_ai_export(payload: dict = Body(...)):
     if not target or not os.path.isabs(target):
         raise HTTPException(400, "请给出导出目标文件夹（绝对路径）")
     if not _path_allowed(Path(target)):
-        raise HTTPException(403, "导出目标只能在 /Volumes 下的盘或用户目录里（拒绝系统目录）")
+        raise HTTPException(403, "导出目标只能在硬盘/盘符或用户目录里（拒绝系统目录）")
     tag_ids = [x for x in (payload.get("tag_ids") or []) if TG.get(x)]
     kw = (payload.get("keywords") or "").strip()
     scope_in = payload.get("scope") or None
@@ -790,7 +799,7 @@ def api_tag_ref_file(tid: str, payload: dict = Body(...)):
     if src.suffix.lower() not in tag_io._REF_IMG_EXTS:
         raise HTTPException(400, "参考图只接受图片文件（jpg/png/webp/gif/bmp/heic）")
     if not _path_allowed(src):
-        raise HTTPException(403, "该路径不在允许读取的范围（仅 /Volumes 下的盘和用户目录）")
+        raise HTTPException(403, "该路径不在允许读取的范围（仅各硬盘/盘符和用户目录）")
     if not src.exists() or not src.is_file():
         raise HTTPException(400, "图片不存在")
     cfg = get_cfg()
@@ -1056,18 +1065,18 @@ def api_frame_candidates_clear(aid: str):
 
 @app.post("/api/asset/{aid}/reveal")
 def api_asset_reveal(aid: str):
-    """在 Finder 中显示原文件。"""
+    """在文件管理器中显示原文件（mac: Finder / Windows: 资源管理器）。"""
     a = A.get(aid)
     if not a:
         raise HTTPException(404, "素材不存在")
     src = volumes.abspath(a)
     if src is None or not src.exists():
         raise HTTPException(409, "原文件离线或已删除")
-    if os.uname().sysname != "Darwin":
-        raise HTTPException(409, "当前系统不支持 Finder 显示")
     try:
-        subprocess.run(["open", "-R", str(src)], timeout=10)
-    except subprocess.SubprocessError as e:
+        osplat.reveal(src)
+    except osplat.DialogUnsupported as e:
+        raise HTTPException(409, str(e))
+    except (subprocess.SubprocessError, OSError) as e:
         raise HTTPException(500, str(e))
     return {"ok": True}
 
@@ -1755,7 +1764,7 @@ def api_export(payload: dict = Body(...)):
     if not os.path.isabs(target):
         raise HTTPException(400, "导出目标需要绝对路径")
     if not _path_allowed(Path(target)):
-        raise HTTPException(403, "导出目标只能在 /Volumes 下的盘或用户目录里（拒绝系统目录）")
+        raise HTTPException(403, "导出目标只能在硬盘/盘符或用户目录里（拒绝系统目录）")
     ids = _expand_asset_targets(payload)
     if not ids:
         raise HTTPException(400, "选中对象里没有已登记素材（未导入的文件夹请先快扫）")
@@ -2053,7 +2062,7 @@ def _fs_card(path: str, *, scan_counts: bool = True, volume_info: dict | None = 
     if scan_counts:
         try:
             for e in os.scandir(path):
-                if e.name.startswith("."):
+                if osplat.should_skip_name(e.name):
                     continue
                 try:
                     isdir = e.is_dir()
@@ -2077,7 +2086,9 @@ def _fs_card(path: str, *, scan_counts: bool = True, volume_info: dict | None = 
         cover = f.get("cover_thumb") or ""
         if cover and not (get_cfg().thumbs_dir / cover).exists():
             cover = ""   # 缩略图被清除后 cover_thumb 可能指向已删文件 → 显示占位
-    return {"name": p.name or path, "path": str(p), "child_dirs": child_dirs, "direct_media": direct_media,
+    # 盘根（rel_path 为空）用卷显示名：Windows 盘符根 p.name 是空串，卷标才是人话
+    card_name = (info["name"] if not info["rel_path"] else p.name) or str(p)
+    return {"name": card_name, "path": str(p), "child_dirs": child_dirs, "direct_media": direct_media,
             "imported": bool(f), "folder_id": f["folder_id"] if f else None, "indexed": indexed, "cover": cover,
             "status": status, "hidden": hidden}
 
@@ -2144,7 +2155,7 @@ def _index_current_layer(base: Path, vid: str, rel: str):
     media = []
     try:
         for e in base.iterdir():
-            if e.name.startswith("."):
+            if osplat.should_skip_name(e.name):
                 continue
             if e.is_dir() and e.suffix.lower() in fmod.PKG_EXT:
                 media.append(e)

@@ -51,9 +51,9 @@ blockquote{margin:10px 0;padding:8px 14px;border-left:3px solid var(--line);colo
 </div>
 
 <h2 id="s1">① 安装启动 <small>只做一次</small></h2>
-<div class="tip warn"><b>当前版本仅支持 macOS</b>（Apple Silicon 体验最佳；Intel 可用，AI 打标建议走 API）。Windows 版移植中，关注玩椰第一时间获取。</div>
-<p>解压 zip → 进 <code>app</code> 文件夹 → 双击 <code>启动觅影.command</code>。第一次自动装依赖要等 1-3 分钟，之后秒开。<b>关窗口 = 退出觅影</b>；手动停用 <code>停止觅影.command</code>。</p>
-<div class="tip warn"><b>弹"无法打开，来自身份不明开发者"？</b>右键点击 <code>启动觅影.command</code> →「打开」→ 再点「打开」。macOS 的正常拦截，只需这一次。</div>
+<div class="tip"><b>支持 macOS 和 Windows</b>（mac：Apple Silicon 体验最佳，Intel 可用；AI 打标走本地 Ollama 或 API 均可）。</div>
+<p>解压 zip → 进 <code>app</code> 文件夹 → <b>mac 双击 <code>启动觅影.command</code>，Windows 双击 <code>启动觅影.bat</code></b>。第一次自动装依赖要等 1-5 分钟，之后秒开。<b>关窗口 = 退出觅影</b>；手动停用 <code>停止觅影.command</code>（Windows：<code>停止觅影.bat</code>）。</p>
+<div class="tip warn"><b>mac 弹"无法打开，来自身份不明开发者"？</b>右键点击 <code>启动觅影.command</code> →「打开」→ 再点「打开」。macOS 的正常拦截，只需这一次。<b>Windows 弹 SmartScreen 蓝框？</b>点「更多信息」→「仍要运行」。Windows 需要 <a href="https://www.python.org/downloads/windows/" target="_blank">Python ≥ 3.10</a>（启动脚本会检查并引导安装，装时勾选 Add python.exe to PATH）。</div>
 <p><b>你只需准备</b>：一台 Mac ＋ Python ≥ 3.10（没有会引导安装）。<br>
 <b>脚本自动装</b>：全部运行依赖 ＋ 独立窗口 / HEIC 两个可选件（装不上自动跳过），网络不畅自动切国内镜像。<br>
 <b>按需自装</b>：Ollama（本地免费 AI，见⑦）、REDCINE-X PRO（看 R3D，见⑩）、厂商还原 LUT（见⑩）。</p>
@@ -64,6 +64,7 @@ blockquote{margin:10px 0;padding:8px 14px;border-left:3px solid var(--line);colo
 <div class="tip"><b>放心扫：</b>原素材永远只读——绝不重命名 / 移动 / 删除 / 修改你的任何文件；所有数据只写进 <code>app/out/</code>。</div>
 <p>从首跑向导到建起第一个可搜索的库，30 秒看完：</p>
 <img src="guide/demo_firstrun.gif" alt="首跑向导与快扫建库">
+<div class="tip"><b>原理（先懂这个，后面全顺）：</b>觅影 = 让 AI 看懂你的素材库，你用人话搜，AI 助手替你调用。三步缺一不可：<b>登记</b>（记下文件在哪，AI 还看不见）→ <b>生图</b>（抽代表帧，这是 AI 的眼睛）→ <b>打标</b>（AI 看图 + 参考路径/文件名写描述挂标签，才算看懂）。没图/没标签的素材，选中点「生图」「打标」随时补。<b>文件夹名起好 = 给 AI 递线索</b>：「2024_黄鹤楼_航拍」比「新建文件夹(3)」让 AI 理解清楚一个量级——针对以后归档新素材；已入库的别特意改名（改名会被当成搬家去重新对账）。</div>
 <p><b>快扫 vs 扫描</b>：快扫每夹只抽 2 张代表图快速建底稿；重点文件夹再「扫描文件夹」精扫——登记全部、补齐缩略图、逐一打标：</p>
 <img src="guide/demo_scanfull.gif" alt="扫描文件夹精扫入库">
 
@@ -88,7 +89,7 @@ blockquote{margin:10px 0;padding:8px 14px;border-left:3px solid var(--line);colo
 <h2 id="s5">⑤ 看片、选片</h2>
 <p>最基础的两个动作：<b>点缩略图看大图，点卡片标题看详情</b>——</p>
 <img src="guide/demo_basics.gif" alt="基础浏览：大图与详情">
-<p>点缩略图 = 全屏大图：<kbd>←</kbd><kbd>→</kbd> 翻页 · <kbd>1-5</kbd> 打星 · <kbd>0</kbd> 取消 · <kbd>Esc</kbd> 关闭。点卡片标题 = 详情抽屉（备注 / 标签 / 在 Finder 中显示）。</p>
+<p>点缩略图 = 全屏大图：<kbd>←</kbd><kbd>→</kbd> 翻页 · <kbd>1-5</kbd> 打星 · <kbd>0</kbd> 取消 · <kbd>Esc</kbd> 关闭。点卡片标题 = 详情抽屉（备注 / 标签 / 在 Finder / 资源管理器中显示）。</p>
 <img src="guide/03_lightbox.jpg" alt="全屏大图">
 <p>键盘流：方向键移动 · 空格选中 · 回车大图 · <kbd>I</kbd> 详情 · <kbd>A</kbd> 全选 · Shift+勾选范围多选。打过星的都进精选库。</p>
 
@@ -102,7 +103,7 @@ blockquote{margin:10px 0;padding:8px 14px;border-left:3px solid var(--line);colo
 <p>不连模型：扫描 / 浏览 / LUT / 手动标签 / 按词搜索全可用。连上才有：自动打标 + AI 找素材。设置 → AI 模型，两张卡片二选一：</p>
 <img src="guide/08_settings.jpg" alt="设置页">
 <p><b>路线 A · 本地 Ollama</b>（完全免费，全程不出网）：</p>
-<p>1. <a href="https://ollama.com" target="_blank">ollama.com</a> 下载 macOS 版并启动（菜单栏出现小羊驼图标）→ 2. 拉视觉模型：<b>推荐 Qwen3.6 A3B</b>（MoE 只激活小部分参数，快且稳）——在 ollama.com/library 搜 <code>qwen3.6</code> 选 A3B 视觉版，把页面的 <code>ollama pull ...</code> 命令粘进终端执行 → 3. 觅影 设置 → 本地卡片：地址默认不改，「获取列表」选模型 → 测试连接 → 保存。</p>
+<p>1. <a href="https://ollama.com" target="_blank">ollama.com</a> 下载对应系统版本并启动（mac 菜单栏 / Windows 托盘出现小羊驼图标）→ 2. 拉视觉模型：<b>推荐 Qwen3.6 A3B</b>（MoE 只激活小部分参数，快且稳）——在 ollama.com/library 搜 <code>qwen3.6</code> 选 A3B 视觉版，把页面的 <code>ollama pull ...</code> 命令粘进终端执行 → 3. 觅影 设置 → 本地卡片：地址默认不改，「获取列表」选模型 → 测试连接 → 保存。</p>
 <div class="tip"><b>硬件参考：</b>Apple Silicon 统一内存 16GB 起步（小视觉模型）；Qwen3.6 A3B 建议 24GB 及以上；Intel Mac 直接走路线 B。</div>
 <p><b>路线 B · 小米 MiMo API</b>（速度王者，12 路并发打标）：</p>
 <p>1. 打开 <b>platform.xiaomimimo.com</b>，小米账号登录 → 2. 控制台创建 API Key 并复制保存（官方不定期有免费 Token 激励计划，以官网为准）→ 3. 觅影 设置 → API 卡片：地址 <code>https://api.xiaomimimo.com/v1</code>，粘 Key，模型 <code>mimo-v2.5</code> → 测试连接 → 保存。</p>
@@ -111,7 +112,7 @@ blockquote{margin:10px 0;padding:8px 14px;border-left:3px solid var(--line);colo
 <img src="guide/demo_tagging.gif" alt="AI 打标：从生图到描述">
 
 <h2 id="s8">⑧ AI 提的新词：待复核</h2>
-<p>AI 遇到词表没有的词不会直接塞进标签库，而是进「待复核」带置信度、出处素材和理由，点「同意加入」才收录——标签库不会越用越乱。标签库里可拖拽换类目、拖到另一个标签上合并、看 AI 整理建议。</p>
+<p><b>先说清楚：这不是 AI 拿不准。</b>AI 已经给每段素材写好完整描述和标签；「待复核」是标签库的<b>准入关</b>——AI 提出的新词（一个大库能提几千个）你点「同意加入」才收录为正式标签，标签库才不会越用越乱。<b>全部拒绝也不影响搜索</b>：AI 描述已进全文搜索，这些词照样能搜到素材；正式标签的价值是侧栏筛选、统一管理、挂参考图。所以没有心理负担：留下你会用的，其余放心拒绝。标签库里可拖拽换类目、拖到另一个标签上合并、看 AI 整理建议。</p>
 <img src="guide/demo_candidates.gif" alt="待复核审核新词">
 <p>手动挂标签：选中素材 → 工具栏「标签」→ 点选 → 确定：</p>
 <img src="guide/demo_tag.gif" alt="手动挂标签">

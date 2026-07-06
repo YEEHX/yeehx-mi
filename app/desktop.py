@@ -1,10 +1,12 @@
-"""觅影桌面窗口壳：pywebview（macOS 用系统 WKWebView）装现有 Web UI。
+"""觅影桌面窗口壳：pywebview 装现有 Web UI（macOS 用系统 WKWebView；Windows 用
+系统 WebView2/Edge 内核——Win11 自带，Win10 绝大多数也有）。
 
 行为（2026-06-10 拍板的「原生窗口壳」形态）：
 - 已有觅影服务在跑 → 直接开窗口连它；没有 → 自己拉起 uvicorn 子进程
 - 关窗 = 退出觅影：停掉验明正身的服务进程（绝不误杀其他项目）
 - 界面代码零改动，仍可同时用浏览器访问 http://127.0.0.1:8788
-- pywebview 装不上/不可用时，启动脚本自动回落浏览器模式（见 启动觅影.command）
+- pywebview 装不上/不可用时自动回落浏览器模式（mac 见 启动觅影.command；
+  Windows 见 启动觅影.bat + winlaunch.py）
 
 跑法：.venv 里 `python -m app.desktop`（启动脚本会自动选择）。
 """
@@ -17,6 +19,8 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+from app.core import osplat
 
 APP_DIR = Path(__file__).resolve().parent
 ROOT = APP_DIR.parent
@@ -36,11 +40,9 @@ def _alive() -> bool:
 
 
 def _is_miying_pid(pid: int) -> bool:
-    """ps 验明正身：只认 uvicorn app.main:app，绝不误杀其他项目。"""
+    """验明正身：只认 uvicorn app.main:app，绝不误杀其他项目（mac: ps / win: CIM）。"""
     try:
-        out = subprocess.run(["ps", "-p", str(pid), "-o", "command="],
-                             capture_output=True, text=True, timeout=5).stdout
-        return "uvicorn app.main:app" in out
+        return "uvicorn app.main:app" in osplat.pid_command(pid)
     except Exception:
         return False
 
@@ -55,9 +57,10 @@ def _spawn() -> subprocess.Popen:
         pass
     (APP_DIR / "out").mkdir(parents=True, exist_ok=True)
     log = open(APP_DIR / "out" / "app.log", "ab")
+    kw = {"creationflags": 0x08000000} if osplat.IS_WIN else {}   # CREATE_NO_WINDOW：不闪黑窗
     p = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.main:app", "--host", host, "--port", str(PORT)],
-        cwd=str(ROOT), stdout=log, stderr=log,
+        cwd=str(ROOT), stdout=log, stderr=log, **kw,
     )
     PIDF.write_text(str(p.pid), encoding="utf-8")
     return p
@@ -81,13 +84,13 @@ def _stop_service():
         return
     if _is_miying_pid(pid):
         try:
-            os.kill(pid, signal.SIGTERM)
+            os.kill(pid, signal.SIGTERM)   # Windows 上等价于 TerminateProcess
             for _ in range(10):
                 if not _is_miying_pid(pid):
                     break
                 time.sleep(0.5)
             else:
-                os.kill(pid, signal.SIGKILL)
+                os.kill(pid, getattr(signal, "SIGKILL", signal.SIGTERM))
         except OSError:
             pass
     PIDF.unlink(missing_ok=True)
@@ -116,7 +119,7 @@ def main() -> int:
         import webview
     except ImportError:
         print("未安装 pywebview，改用浏览器打开（功能完全一致）。")
-        subprocess.run(["open", URL], check=False)
+        osplat.open_url(URL)
         return 0
 
     try:
@@ -126,11 +129,18 @@ def main() -> int:
     except Exception:
         pass
 
-    webview.create_window(
-        "玩椰 YEEHX · 觅影", URL,
-        width=1440, height=900, min_size=(1080, 680),
-    )
-    webview.start()          # 阻塞到窗口关闭
+    try:
+        webview.create_window(
+            "玩椰 YEEHX · 觅影", URL,
+            width=1440, height=900, min_size=(1080, 680),
+        )
+        webview.start()      # 阻塞到窗口关闭
+    except Exception as e:
+        # pywebview 装上了但渲染器起不来（典型：Windows 缺 WebView2 Runtime / pythonnet 坏）
+        # → 回落浏览器，服务保留，不能让用户面对一个"双击了没反应"的死局
+        print(f"窗口创建失败（{e}），改用浏览器打开（功能完全一致）。")
+        osplat.open_url(URL)
+        return 0
     _stop_service()          # 关窗即退服务
     return 0
 

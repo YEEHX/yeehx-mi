@@ -1,7 +1,7 @@
 """觅影 MCP server —— 给外部 Agent（Hermes 等）用的标准 MCP 接口（stdio）。
 
-挂法：Hermes 的 ~/.hermes/config.yaml 里把 command 指到 app/mcp_run.sh，
-详见 app/Hermes接入觅影.md。
+挂法：Hermes 的 ~/.hermes/config.yaml 里把 command 指到 app/mcp_run.sh
+（Windows：app/mcp_run.bat），详见 app/Hermes接入觅影.md。
 
 设计原则：
 - 薄壳：所有数据操作都打觅影自己的 HTTP API（127.0.0.1:8788），单一数据源，
@@ -111,13 +111,14 @@ def ensure_app() -> dict:
             log.parent.mkdir(parents=True, exist_ok=True)
             with open(log, "ab") as lf:
                 lf.write(b"\n[mcp] auto-start uvicorn\n")
+                from app.core import osplat
                 proc = subprocess.Popen(
                     [sys.executable, "-m", "uvicorn", "app.main:app",
                      "--host", _bind_host(), "--port", str(PORT)],
                     cwd=str(ROOT), stdout=lf, stderr=subprocess.STDOUT,
-                    start_new_session=True,
+                    **osplat.detached_popen_kwargs(),
                 )
-            try:   # 写 server.pid，「停止觅影.command」按它精确停
+            try:   # 写 server.pid，停止脚本（.command/.bat）按它精确停
                 (APP_DIR / "out" / "server.pid").write_text(str(proc.pid), encoding="utf-8")
             except OSError:
                 pass
@@ -341,14 +342,14 @@ def miying_get_original(asset_id: str) -> str:
 @mcp.tool()
 def miying_export(target_dir: str, asset_ids: str = "", query: str = "") -> str:
     """把素材原片复制到用户指定的文件夹（只复制，绝不动原文件）。
-    target_dir：绝对路径，例 /Users/xxx/Desktop/周五拍摄用。
+    target_dir：绝对路径，例 mac /Users/xxx/Desktop/周五拍摄用、Windows D:\\周五拍摄用。
     asset_ids（推荐）：逗号分隔的 id，导出明确这几条；
     query：自然语言条件，按解析结果全量导出（适合「把所有夜景航拍都拷过去」）。
     二者给一个即可，asset_ids 优先。"""
     ensure_app()
     target = os.path.expanduser((target_dir or "").strip())
     if not target or not os.path.isabs(target):
-        return "target_dir 必须是绝对路径（例 /Users/xxx/Desktop/素材包）。"
+        return "target_dir 必须是绝对路径（mac 例 /Users/xxx/Desktop/素材包；Windows 例 D:\\素材包）。"
     ids = _ids(asset_ids)
     if ids:
         res = _post("/api/export", {"type": "original", "asset_ids": ids, "target": target})
@@ -407,8 +408,8 @@ def miying_status() -> str:
 
 @mcp.tool()
 def miying_reveal(asset_id: str) -> str:
-    """在访达（Finder）中弹出并选中素材原文件——人在电脑前时用这个最快，
-    不转码、不复制。远程（微信）场景请用 miying_get_original。"""
+    """在文件管理器（mac 访达 / Windows 资源管理器）中弹出并选中素材原文件——
+    人在电脑前时用这个最快，不转码、不复制。远程（微信）场景请用 miying_get_original。"""
     ensure_app()
     aid = asset_id.strip()
     a = _get(f"/api/asset/{aid}", timeout=30).json()
@@ -419,7 +420,7 @@ def miying_reveal(asset_id: str) -> str:
         return (f"「{name}」的原文件现在拿不到：所在卷离线（硬盘没挂载）或文件已删除。\n"
                 f"记录位置：{loc}")
     _post(f"/api/asset/{aid}/reveal", {}, timeout=15)
-    return f"已在访达中弹出选中：{name}\n完整路径：{src}"
+    return f"已在文件管理器中弹出选中：{name}\n完整路径：{src}"
 
 
 if __name__ == "__main__":

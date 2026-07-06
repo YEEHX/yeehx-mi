@@ -9,5 +9,5 @@ _tmp = tempfile.mkdtemp(prefix="miying_test_")
 os.environ["YEEHX_OUT"] = _tmp
 os.environ["YEEHX_DB"] = str(Path(_tmp) / "test.sqlite")
 # 3-1/3-3 白名单只放行 /Volumes 和用户目录；测试素材在系统临时目录里，显式加白
-os.environ["YEEHX_FS_ROOTS"] = ":".join(dict.fromkeys(
+os.environ["YEEHX_FS_ROOTS"] = os.pathsep.join(dict.fromkeys(
     [tempfile.gettempdir(), "/tmp", "/private/var/folders", "/private/tmp"]))

@@ -57,6 +57,8 @@ UUID_PNG = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 # ── 文本清洗：个人路径 → 占位（用户名用拼接写，避免本脚本被自己的安检误伤） ──
 _USER = "hi" + "yeehx"
 PATH_REWRITE = ("/Users/" + _USER, "/Users/你的用户名")
+# ⚠ .bat 故意不在重写名单里：read_text/write_text 会把 CRLF 吃成 LF，批处理可能坏；
+#   Windows 三件套（启动/停止/mcp_run.bat）走 copy2 原样复制，安检里单独验 CRLF。
 REWRITE_SUFFIX = {".md", ".yaml", ".yml", ".json", ".py", ".sh", ".command"}
 
 # ── 安检规则 ──
@@ -116,6 +118,14 @@ def audit() -> list[str]:
         problems.append("app/out/ 混进了发布包！")
     if not (OUT_DIR / "LICENSE").exists() or not (OUT_DIR / "NOTICE").exists():
         problems.append("缺 LICENSE / NOTICE")
+    # 双平台启动器必须齐全（少一个就是断胳膊的发布包）
+    for launcher in ("app/启动觅影.command", "app/停止觅影.command", "app/mcp_run.sh",
+                     "app/启动觅影.bat", "app/停止觅影.bat", "app/mcp_run.bat", "app/winlaunch.py"):
+        if not (OUT_DIR / launcher).exists():
+            problems.append(f"缺启动器：{launcher}")
+    for bat in (OUT_DIR / "app").glob("*.bat"):
+        if b"\r\n" not in bat.read_bytes():
+            problems.append(f"{bat.name} 丢了 CRLF 行尾（批处理在部分 Windows 上会坏）")
     for cube in (OUT_DIR / "app" / "luts").glob("*.cube"):
         problems.append(f"厂商 LUT 混入：{cube.name}（版权风险）")
     for p in OUT_DIR.rglob("*"):

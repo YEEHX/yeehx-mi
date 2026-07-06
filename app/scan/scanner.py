@@ -15,6 +15,7 @@ from pathlib import Path
 from app import db
 from app.config import get_cfg
 from app.core import volumes, folders, assets as assets_mod, inheritance
+from app.core import osplat
 from app.core import files as fmod
 from app.media import thumbnails
 from app import tasks
@@ -37,7 +38,7 @@ def enumerate_media_folders(mount: Path, root_abs: Path, volume_id: str | None =
             continue
         has_media = False
         for e in entries:
-            if e.name.startswith("."):
+            if osplat.should_skip_name(e.name):
                 continue
             if e.is_dir():
                 if e.suffix.lower() in fmod.PKG_EXT:
@@ -63,7 +64,7 @@ def _media_files(folder_abs: Path) -> list[Path]:
     out = []
     try:
         for e in folder_abs.iterdir():
-            if e.name.startswith("."):
+            if osplat.should_skip_name(e.name):
                 continue
             if e.is_dir() and e.suffix.lower() in fmod.PKG_EXT:
                 out.append(e)

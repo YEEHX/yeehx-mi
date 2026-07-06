@@ -37,6 +37,14 @@ def redline_exe() -> str | None:
         Path("/Applications/REDCINE-X PRO.app/Contents/MacOS/REDline"),
         Path("/Applications/REDCINE-X Professional/RED PLAYER.app/Contents/MacOS/REDline"),
     ])
+    # Windows 默认安装位置（shutil.which 只找 PATH，REDCINE-X 安装器不进 PATH）
+    for pf in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)")):
+        if pf:
+            candidates.extend([
+                Path(pf) / "REDCINE-X PRO 64-bit" / "REDline.exe",
+                Path(pf) / "RED" / "REDCINE-X PRO" / "REDline.exe",
+                Path(pf) / "REDCINE-X PRO" / "REDline.exe",
+            ])
 
     for p in candidates:
         if p.exists() and os.access(p, os.X_OK):

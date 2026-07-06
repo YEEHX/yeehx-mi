@@ -116,16 +116,30 @@ def _places(cats: dict) -> list[str]:
     return out
 
 
+_WIN_BAD = set('<>:"/\\|?*')                     # Windows 非法文件名字符（mac 也别写出 "/"）
+_WIN_RESERVED = {"con", "prn", "aux", "nul",
+                 *(f"com{i}" for i in range(1, 10)), *(f"lpt{i}" for i in range(1, 10))}
+
+
+def _sanitize_stem(stem: str) -> str:
+    """导出文件名清洗：标签/原名里可能带 : ? * 等字符，Windows（NTFS/exFAT）写不进去。"""
+    s = "".join("_" if (c in _WIN_BAD or ord(c) < 32) else c for c in stem)
+    s = s.rstrip(". ")                            # Windows 不允许结尾点/空格
+    if s.lower() in _WIN_RESERVED:
+        s = "_" + s
+    return s or "未命名"
+
+
 def _build_name(a: dict, ext: str, options: dict) -> str:
     if options.get("naming") != "pattern":
         stem = Path(a["name"]).stem
-        return stem + ext
+        return _sanitize_stem(stem) + ext
     eff = _eff(a)
     places = _places(_cats(eff))
     date = filename_date(Path(a["name"]).stem) or datetime.fromtimestamp(a.get("mtime") or 0).strftime("%Y%m%d")
     parts = places[:2] + [date]
     base = "_".join(p for p in parts if p) or Path(a["name"]).stem
-    return f"{base}{ext}"
+    return _sanitize_stem(base) + ext
 
 
 def _resolve_conflict(dst: Path, options: dict) -> Path | None:
@@ -279,7 +293,10 @@ def _fcpxml(rows: list[dict]) -> str:
         if not r["path"]:
             continue
         rid = f"r{i + 1}"
-        url = "file://" + quote(str(r["path"]), safe="/")
+        try:
+            url = Path(r["path"]).as_uri()        # 跨平台 file:// URL（Windows 盘符也正确）
+        except ValueError:
+            url = "file://" + quote(str(r["path"]), safe="/")
         name = _xattr(r["name"])
         dur = r.get("duration")
         dur_attr = f' duration="{int(round(float(dur) * 2500))}/2500s"' if dur else ""

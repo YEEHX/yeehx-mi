@@ -56,20 +56,21 @@ REQ_HASH=$(shasum -a 256 "$APP_DIR/requirements.txt" | awk '{print $1}')
 HASH_FILE="$VENV/.req_hash"
 MIRROR="https://pypi.tuna.tsinghua.edu.cn/simple"
 if [ ! -f "$HASH_FILE" ] || [ "$(cat "$HASH_FILE" 2>/dev/null)" != "$REQ_HASH" ]; then
-  echo "检查/安装依赖（首次约 1-3 分钟，取决于网速；之后启动秒开）…"
-  pip install --upgrade pip >/dev/null 2>&1 || true
-  # 先默认源；失败自动换清华镜像重试一次（国内网络常见问题，不用你操作）
-  if ! pip install -r "$APP_DIR/requirements.txt" 2>"$APP_DIR/pip_err.log"; then
-    echo "默认源安装失败，自动换国内镜像重试…"
-    pip install -i "$MIRROR" -r "$APP_DIR/requirements.txt" 2>>"$APP_DIR/pip_err.log" || {
+  echo "检查/安装依赖（共约 80MB，首次约 1-5 分钟；进度条在动就没卡住。之后启动秒开）…"
+  pip install -i "$MIRROR" --upgrade pip >/dev/null 2>&1 || true
+  # 清华镜像优先（用户几乎全在国内；官方源直连常年只有几十 kB/s，
+  # "慢"不会触发失败回退，用户会误以为卡死——2026-07-06 朋友实测教训）；镜像挂了才回官方源
+  if ! pip install -i "$MIRROR" -r "$APP_DIR/requirements.txt" 2>"$APP_DIR/pip_err.log"; then
+    echo "国内镜像安装失败，自动换官方源重试…"
+    pip install -r "$APP_DIR/requirements.txt" 2>>"$APP_DIR/pip_err.log" || {
       echo ""
       echo "✗ 依赖安装失败（两个源都试过了）。常见原因：网络不通 / 代理拦截。"
       echo "  报错细节在 app/pip_err.log，把它发给玩椰即可。"
       read -n1 -p "按任意键退出"; exit 1; }
   fi
   # 可选组件：装不上不影响启动（HEIC=iPhone照片；pywebview=独立窗口，缺了走浏览器）
-  pip install pillow-heif >/dev/null 2>&1 || pip install -i "$MIRROR" pillow-heif >/dev/null 2>&1 || true
-  pip install "pywebview>=5.0" >/dev/null 2>&1 || pip install -i "$MIRROR" "pywebview>=5.0" >/dev/null 2>&1 || true
+  pip install -i "$MIRROR" pillow-heif >/dev/null 2>&1 || pip install pillow-heif >/dev/null 2>&1 || true
+  pip install -i "$MIRROR" "pywebview>=5.0" >/dev/null 2>&1 || pip install "pywebview>=5.0" >/dev/null 2>&1 || true
   echo "$REQ_HASH" > "$HASH_FILE"
   echo "依赖就绪。"
 else

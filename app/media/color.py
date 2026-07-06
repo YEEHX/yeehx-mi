@@ -13,9 +13,11 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from app.media.frames import imread_u
+
 
 def extract_color_tags(img_path: Path, k: int = 4) -> list[str]:
-    img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
+    img = imread_u(img_path, cv2.IMREAD_COLOR)   # 中文路径安全（Windows cv2.imread 会炸）
     if img is None:
         return []
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
