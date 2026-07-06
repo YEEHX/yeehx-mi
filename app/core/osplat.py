@@ -222,6 +222,35 @@ def open_url(url: str) -> None:
     webbrowser.open(url)
 
 
+def move_to_trash(path: Path) -> None:
+    """把目录/文件移进系统废纸篓（可恢复，符合"绝不永久删除"哲学）。
+
+    mac: Finder delete（进废纸篓）；win: VB FileSystem 的 SendToRecycleBin。
+    失败抛 RuntimeError，调用方自行兜底（比如提示用户手动删）。
+    """
+    p = str(Path(path).resolve())
+    if IS_MAC:
+        r = subprocess.run(
+            ["osascript", "-e",
+             f'tell application "Finder" to delete POSIX file "{p}"'],
+            capture_output=True, timeout=30)
+        if r.returncode != 0:
+            raise RuntimeError(r.stderr.decode("utf-8", "replace")[:200] or "Finder 拒绝了删除")
+        return
+    if IS_WIN:
+        script = (
+            "Add-Type -AssemblyName Microsoft.VisualBasic; "
+            f"[Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory('{p}',"
+            "'OnlyErrorDialogs','SendToRecycleBin')")
+        r = subprocess.run(["powershell", "-NoProfile", "-Command", script],
+                           capture_output=True, timeout=60,
+                           **detached_popen_kwargs())
+        if r.returncode != 0:
+            raise RuntimeError(r.stderr.decode("utf-8", "replace")[:200] or "回收站移动失败")
+        return
+    raise RuntimeError("当前系统不支持移入废纸篓，请手动删除")
+
+
 # ═══════════════ 后台进程 ═══════════════
 
 def detached_popen_kwargs() -> dict:

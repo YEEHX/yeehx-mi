@@ -102,3 +102,39 @@ def test_health_carries_version(client):
     """启动脚本的版本对账靠它：health 必须带 version 字段。"""
     from app import __version__
     assert client.get("/api/health").json()["version"] == __version__
+
+
+def test_cleanup_trashes_only_migrated_source(fresh_env, client, monkeypatch):
+    """清理旧版本：只认搬家记录的来源，三重校验；库没搬空/路径不符都拒绝。"""
+    trashed = []
+    from app.core import osplat
+    monkeypatch.setattr(osplat, "move_to_trash", lambda p: trashed.append(str(p)))
+
+    # 没搬过家 → 没有可清理的记录
+    r = client.post("/api/upgrade/cleanup", json={})
+    assert r.status_code == 400
+
+    old = _make_old_install(fresh_env, n_assets=2)
+    client.post("/api/upgrade/migrate", json={"path": str(old)})
+
+    # 路径不符 → 拒绝
+    r = client.post("/api/upgrade/cleanup", json={"path": "/etc"})
+    assert r.status_code == 400
+
+    # 正确路径（默认用记录值）→ 移入废纸篓 + 记录清空
+    r = client.post("/api/upgrade/cleanup", json={})
+    assert r.json()["ok"] and trashed == [str(old)]
+    r2 = client.post("/api/upgrade/cleanup", json={})
+    assert r2.status_code == 400          # 记录已清空，不能重复清理
+
+
+def test_cleanup_refuses_if_library_still_there(fresh_env, client, monkeypatch):
+    """旧目录里还有 miying.sqlite（没搬空/用户又用旧版写了数据）→ 绝不动它。"""
+    from app.core import osplat
+    monkeypatch.setattr(osplat, "move_to_trash", lambda p: (_ for _ in ()).throw(AssertionError("不该被调用")))
+    old = _make_old_install(fresh_env, n_assets=2)
+    client.post("/api/upgrade/migrate", json={"path": str(old)})
+    # 模拟旧目录死灰复燃：又出现一个库文件
+    (old / "app" / "out" / "miying.sqlite").write_bytes(b"resurrected")
+    r = client.post("/api/upgrade/cleanup", json={})
+    assert r.status_code == 409

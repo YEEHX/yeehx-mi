@@ -33,6 +33,7 @@ OUT_DIR = DIST / f"MiYing-v{VERSION}"
 EXCLUDES = [
     ".git/", ".pytest_cache/", ".DS_Store",
     "app/out/", "app/.venv/", "app/pip_err.log",
+    "app/runtime/",                     # 用户机器上自动下载的便携 Python，不随包分发
     "release/dist/",
     "觅影-一期优化执行方案.md",          # 内部执行文档，不随发布
     "AGENTS.md",                        # Cowork 项目内部说明，对外无意义

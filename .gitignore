@@ -18,3 +18,6 @@ app/*.log
 app/.venv/
 app/app.db
 release/dist/
+
+# 自动下载的便携 Python（启动脚本按需拉取）
+app/runtime/

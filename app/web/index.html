@@ -375,7 +375,7 @@ async function doAISearch(q,follow=false){q=(q||'').trim();if(!q)return;
     AIQ.active=true;AIQ.note='';AIQ.scope=null;SEARCH_SCOPE=null;
     Q=p.keywords||q;$('#q').value=Q;if(!follow&&box)box.value='';
     await doSearch(true);
-    toast('AI 没连上，已用普通关键词搜索（'+String(d.degraded_reason||'').slice(0,70)+'）','err');
+    toast('AI 没连上，已用普通关键词搜索（'+String(d.degraded_reason||'').slice(0,70)+'）——到「设置」检查模型配置，点「测试连接」通过即自动保存','err');
     return}
   AIQ.active=true;AIQ.note=p.note||'';AIQ.scope=p.scope||null;SEARCH_SCOPE=AIQ.scope?{volume_id:AIQ.scope.volume_id,rel_path:AIQ.scope.rel_path}:null;
   const ids=p.tag_ids||[];
@@ -602,8 +602,12 @@ function setProvider(k){PROVIDER=k;document.querySelectorAll('.model-card').forE
 function modelPayload(){return {provider:PROVIDER,local_base_url:$('#local-url').value,local_api_key:$('#local-key').value,local_model:$('#local-model').value,api_base_url:$('#api-url').value,api_key:$('#api-key').value,api_model:$('#api-model').value};}
 async function loadModelsFor(kind){const p=modelPayload();p.provider=kind;const msg=$('#modelMsg');if(msg)msg.textContent='正在获取…';const d=await jpost('/api/models/list',p);if(!d.ok){if(msg)msg.textContent=`获取失败：${d.error||''}`;return}
   const sel=$('#'+kind+'-model');const cur=sel.value;sel.innerHTML=d.models.map(x=>`<option ${x===cur?'selected':''}>${attr(x)}</option>`).join('')||`<option>${attr(cur)}</option>`;if(msg)msg.textContent=`已加载 ${d.models.length} 个模型（${kind==='local'?'本地':'API'}端）`;}
-async function saveModel(){await jpost('/api/settings/model',modelPayload());toast('已保存','ok');}
-async function testModel(){const msg=$('#modelMsg');if(msg)msg.textContent='正在测试连接…';const d=await jpost('/api/ping',modelPayload());if(msg)msg.textContent=d.message||'';toast(d.ok?'连接正常':'连接失败',d.ok?'ok':'err');}
+async function saveModel(quiet){await jpost('/api/settings/model',modelPayload());if(!quiet)toast('已保存','ok');}
+/* 测试通过即自动保存——真实用户踩坑：测试连上了但没点「保存」，搜索时后端读到的
+   还是空配置，提示"AI 没连上"。测试成功的配置就是用户想用的配置，直接落库。 */
+async function testModel(){const msg=$('#modelMsg');if(msg)msg.textContent='正在测试连接…';const d=await jpost('/api/ping',modelPayload());
+  if(d.ok){try{await saveModel(true)}catch{}if(msg)msg.textContent=(d.message||'连接正常')+' · 配置已自动保存';toast('连接正常，配置已保存','ok')}
+  else{if(msg)msg.textContent=d.message||'';toast('连接失败','err')}}
 async function restoreHidden(id){await jpost('/api/hidden/'+id+'/restore');toast('已恢复显示');renderSettings();if(VIEW==='fs')refresh();}
 async function chooseLutFile(){const f=await jget('/api/dialog/lut_file');await jpost('/api/luts/add',{name:f.name,path:f.path});toast('已新增 LUT');renderSettings();}
 async function saveAutoLut(v){await jpost('/api/settings/app',{auto_lut:!!v});toast(v?'已开启自动 LUT（对旧素材重新「生图」即生效）':'已关闭自动 LUT（重新生图回灰片）','ok');}
@@ -737,9 +741,17 @@ function wizShowUpgrade(err){const c=WIZ_UPGRADE;
     ${err?`<div style="color:#e05c5c;font-size:13px;margin:10px 2px 0">${esc(err)}</div>`:''}
     <div class="wizfoot"><button class="btn red" id="wizMigBtn" onclick="wizMigrate()">一键搬过来（推荐）</button><button class="btn ghost" onclick="wizShow(1)">不搬，全新开始</button></div>`);}
 async function wizMigrate(){const b=$('#wizMigBtn');if(b){b.disabled=true;b.textContent='正在搬家…（库大要几分钟，别关窗口）'}
-  try{const r=await jpost('/api/upgrade/migrate',{path:WIZ_UPGRADE.path});
-    toast(`搬家完成：${Number(r.assets).toLocaleString()} 条素材已就位`,'ok');setTimeout(()=>location.reload(),600);}
+  try{const r=await jpost('/api/upgrade/migrate',{path:WIZ_UPGRADE.path});wizShowCleanup(r);}
   catch(e){wizShowUpgrade(String(e&&e.message||'搬家失败，请重试').slice(0,160));}}
+/* 搬完顺手问一句旧文件夹的去留（移废纸篓=可恢复；绝不自动删任何东西） */
+function wizShowCleanup(r){
+  wizBox(`<div style="text-align:center"><div style="font-size:19px;font-weight:800;margin:6px 0 4px">搬家完成</div>
+    <div class="muted" style="margin-bottom:14px">${Number(r.assets).toLocaleString()} 条素材已就位，标签、星级、设置全部保留。</div></div>
+    <div class="pledge"><span class="ico">旧</span><div><b>旧文件夹已经不含你的数据</b><span class="muted">${esc(r.from||'')}<br>移到废纸篓可随时恢复；留着也不影响使用。</span></div></div>
+    <div class="wizfoot"><button class="btn red" id="wizCleanBtn" onclick="wizCleanup()">移到废纸篓</button><button class="btn ghost" onclick="location.reload()">留着，以后我自己删</button></div>`);}
+async function wizCleanup(){const b=$('#wizCleanBtn');if(b){b.disabled=true;b.textContent='正在移入废纸篓…'}
+  try{await jpost('/api/upgrade/cleanup',{});toast('旧文件夹已移入废纸篓','ok')}catch{}
+  setTimeout(()=>location.reload(),600);}
 async function wizOpen(){WIZ_STATUS=await jget('/api/setup/status',null,true).catch(()=>({arch:'',ollama_alive:false}));wizShow(1);}   // 设置页「重看引导」
 function wizBox(inner){let w=$('#setupwiz');if(!w){w=document.createElement('div');w.id='setupwiz';document.body.appendChild(w)}
   w.innerHTML=`<div class="wizcard">${inner}</div>`;}

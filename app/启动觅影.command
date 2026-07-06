@@ -41,23 +41,52 @@ if alive; then
   echo "端口上运行着另一个版本的觅影（v${RUN_VER:-未知} → 本包 v$MY_VER），自动停旧换新…"
 fi
 
-# 1) Python3，且必须 ≥ 3.10（老 mac 系统自带 3.9 会在别处报错，这里先拦住）
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "未找到 python3，正在唤起苹果命令行工具安装窗口…"
-  xcode-select --install || true
-  echo "装完后请再双击一次本文件。"; read -n1 -p "按任意键退出"; exit 1
-fi
-if ! python3 -c 'import sys; raise SystemExit(0 if sys.version_info >= (3,10) else 1)'; then
-  echo "你的 python3 太老（$(python3 -V 2>&1)），觅影需要 Python ≥ 3.10。"
-  echo "安装新版：https://www.python.org/downloads/macos/ 或 brew install python"
-  read -n1 -p "按任意键退出"; exit 1
+# 1) 找 Python ≥ 3.10（v2.1.2 起用户什么都不用装）：
+#    自带便携版 runtime/python → 系统 python3 → 自动下载便携版（国内镜像，约 24MB，
+#    只进觅影自己的文件夹，不碰系统）→ 全失败才打开浏览器引导手动安装
+PYOK() { "$1" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3,10) else 1)' 2>/dev/null; }
+PYBIN=""
+if [ -x "$APP_DIR/runtime/python/bin/python3" ] && PYOK "$APP_DIR/runtime/python/bin/python3"; then
+  PYBIN="$APP_DIR/runtime/python/bin/python3"
+elif command -v python3 >/dev/null 2>&1 && PYOK "$(command -v python3)"; then
+  PYBIN="$(command -v python3)"
+else
+  echo "没找到合适的 Python —— 自动下载便携版（约 24MB，只装进觅影自己的文件夹，不碰你的系统）…"
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    arm64)  PBS_T="aarch64-apple-darwin" ;;
+    *)      PBS_T="x86_64-apple-darwin" ;;
+  esac
+  PBS_URL="https://registry.npmmirror.com/-/binary/python-build-standalone/20260623/cpython-3.12.13+20260623-${PBS_T}-install_only_stripped.tar.gz"
+  mkdir -p "$APP_DIR/runtime"
+  # gzip 自带校验：解不开 = 没下完整；-C - 支持断点续传，--retry 3 抗抖动
+  if curl -L --retry 3 -C - --max-time 600 -o "$APP_DIR/runtime/pbs.tar.gz" "$PBS_URL" \
+     && tar -xzf "$APP_DIR/runtime/pbs.tar.gz" -C "$APP_DIR/runtime" \
+     && PYOK "$APP_DIR/runtime/python/bin/python3"; then
+    rm -f "$APP_DIR/runtime/pbs.tar.gz"
+    PYBIN="$APP_DIR/runtime/python/bin/python3"
+    echo "便携版 Python 就绪。"
+  else
+    rm -f "$APP_DIR/runtime/pbs.tar.gz"
+    echo ""
+    echo "自动下载没成功（网络或镜像问题）。手动装一次也很快："
+    echo "  即将打开国内镜像下载页 —— 下载 .pkg 后双击安装，一路继续即可。"
+    echo "装好后请再双击一次本文件。"
+    open "https://mirrors.huaweicloud.com/python/3.12.8/python-3.12.8-macos11.pkg"
+    read -n1 -p "按任意键退出"; exit 1
+  fi
 fi
 
 # 2) 虚拟环境 + 依赖（requirements.txt 没变就整段跳过，启动快几秒到几十秒）
 VENV="$APP_DIR/.venv"
+# venv 坏了自动重建（比如整个文件夹被手动挪过位置，venv 里的解释器链接会断）
+if [ -d "$VENV" ] && ! "$VENV/bin/python" -c 'import sys' >/dev/null 2>&1; then
+  echo "检测到虚拟环境失效（文件夹挪过位置？），自动重建…"
+  rm -rf "$VENV"
+fi
 if [ ! -d "$VENV" ]; then
   echo "首次运行：创建虚拟环境…"
-  python3 -m venv "$VENV"
+  "$PYBIN" -m venv "$VENV"
 fi
 source "$VENV/bin/activate"
 REQ_HASH=$(shasum -a 256 "$APP_DIR/requirements.txt" | awk '{print $1}')

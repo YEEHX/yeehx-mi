@@ -101,12 +101,15 @@ class Config:
         self.update_check = bool(settings.get("update_check", True))
         # 独立窗口模式（pywebview 壳）：关掉则启动脚本走纯浏览器（重启生效）
         self.window_mode = bool(settings.get("window_mode", True))
+        # 升级搬家的来源目录（清理旧版本用；清理完成后置空）
+        self.last_migrated_from = str(settings.get("last_migrated_from") or "")
 
     def save_app_settings(self, settings: dict):
         # ⚠ cur 是全量基底：新增持久字段必须加进来，否则任何一次 save 都会把它抹掉
         cur = {"auto_lut": self.auto_lut, "lan_access": self.lan_access, "lan_token": self.lan_token,
                "setup_done": self.setup_done, "update_check": self.update_check,
-               "window_mode": self.window_mode}
+               "window_mode": self.window_mode,
+               "last_migrated_from": self.last_migrated_from or None}
         cur.update(settings or {})
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.app_settings_path.write_text(json.dumps(cur, ensure_ascii=False, indent=2), encoding="utf-8")

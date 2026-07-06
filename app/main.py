@@ -1737,12 +1737,49 @@ def api_upgrade_migrate(payload: dict = Body(...)):
     if s.exists() and not (dst_out / "app_settings.json").exists():
         shutil.copy2(s, dst_out / "app_settings.json")
         moved.append("app_settings.json")
+    # 便携版 Python（旧版下载过就一起搬，新版免重复下载 ~24MB；venv 不搬，重建才干净）
+    src_rt = src_root / "app" / "runtime"
+    dst_rt = Path(__file__).resolve().parent / "runtime"
+    if src_rt.is_dir() and not dst_rt.exists():
+        try:
+            os.rename(src_rt, dst_rt)
+            moved.append("runtime")
+        except OSError:
+            pass                         # 跨盘就算了，新版自己再下，不值得等拷贝
 
     db.adopt_db()                        # 全线程换新句柄 + 幂等建表把老库补齐到当前版本
     import app.config as _cfgmod         # 模型设置等是启动时读入内存的——置空让下次现取
     _cfgmod._CFG = None
+    # 记住来源：前端问"旧文件夹要不要移到废纸篓"、cleanup 接口校验都靠它
+    get_cfg().save_app_settings({"last_migrated_from": str(src_root)})
     n = db.connect().execute("SELECT COUNT(*) FROM assets").fetchone()[0]
     return {"ok": True, "moved": moved, "assets": n, "from": str(src_root)}
+
+
+@app.post("/api/upgrade/cleanup")
+def api_upgrade_cleanup(payload: dict = Body(default={})):
+    """把已搬空的旧版本文件夹移进废纸篓（可恢复）。三重校验，绝不误删：
+    ① 路径必须等于搬家时记录的来源；② 该目录得像一个觅影安装（有 app/__init__.py）；
+    ③ 它的 out 里不能再有素材库（真搬空了）。"""
+    cfg = get_cfg()
+    recorded = cfg.last_migrated_from
+    target = str(Path(str(payload.get("path", recorded))).resolve()) if (payload.get("path") or recorded) else ""
+    if not recorded or target != str(Path(recorded).resolve()):
+        raise HTTPException(400, "没有可清理的旧版本记录")
+    old = Path(target)
+    if not old.exists():
+        cfg.save_app_settings({"last_migrated_from": None})
+        return {"ok": True, "already_gone": True}
+    if not (old / "app" / "__init__.py").exists():
+        raise HTTPException(400, "该目录不像觅影安装目录，拒绝操作")
+    if (old / "app" / "out" / "miying.sqlite").exists():
+        raise HTTPException(409, "旧目录里还有素材库，先完成搬家再清理")
+    try:
+        osplat.move_to_trash(old)
+    except RuntimeError as e:
+        raise HTTPException(500, f"移入废纸篓失败：{e}。可以手动删除：{old}")
+    cfg.save_app_settings({"last_migrated_from": None})
+    return {"ok": True, "trashed": str(old)}
 
 
 @app.post("/api/settings/model")
